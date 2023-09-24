@@ -9,7 +9,7 @@ pub trait Game {
 
     fn get(&self, coordinate: Self::Coordinate) -> Option<&Self::Player>;
 
-    fn play(&mut self, player: Self::Player, coordinate: Self::InputCoordinate) -> Result<(), &str>;
+    fn play<'a>(&mut self, player: Self::Player, coordinate: Self::InputCoordinate) -> Result<(), &'a str>;
 
     fn get_score(&self, player: Self::Player) -> Self::Score;
 

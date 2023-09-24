@@ -60,7 +60,14 @@ impl Power4 {
     }
 
     fn calculate_score(&self, aligns2: u16, aligns3: u16) -> i32 {
-        5 * aligns2 as i32 + 10 * aligns3 as i32
+        (5 * aligns2 + 25 * aligns3) as i32
+    }
+
+    pub fn get_isize(&self, (row, column): (isize, isize)) -> Option<NonZeroU8> {
+        if row < 0 || row >= 6 || column < 0 || column >= 7 {
+            return None;
+        }
+        self.board[row as usize][column as usize]
     }
 }
 
@@ -83,7 +90,7 @@ impl Game for Power4 {
         self.board[row][column].as_ref()
     }
 
-    fn play(&mut self, player: NonZeroU8, column: usize) -> Result<(), &'static str> {
+    fn play<'a>(&mut self, player: NonZeroU8, column: usize) -> Result<(), &'a str> {
         if column >= 7 {
             return Err("Column out of bounds");
         }
@@ -110,27 +117,43 @@ impl Game for Power4 {
         let mut p1_aligns3: u16 = 0;
         let mut p2_aligns2: u16 = 0;
         let mut p2_aligns3: u16 = 0;
-        for line_iterator in self.all_lines() {
+        let debug_cell = |cell: Option<Option<NonZeroU8>>| cell.map(|c| c.map(|c| c.to_string()).unwrap_or("-".to_string())).unwrap_or("X".to_string());
+        let is_playable = |cell: Option<Option<NonZeroU8>>| cell.is_some() && cell.unwrap().is_none();
+        for mut line_iterator in self.all_lines() {
             let mut strike_player = NonZeroU8::new(1u8).unwrap();
             let mut strike: u8 = 0;
-            for cell in line_iterator {
-                if let Some(&cell_player) = cell {
+            let before2 = line_iterator.get_with_offset(-2);
+            let before1 = line_iterator.get_with_offset(-1);
+            let mut cell_option = line_iterator.get_with_offset(0);
+            while let Some(cell) = cell_option {
+                let after1 = || line_iterator.get_with_offset(1);
+                let after2 = || line_iterator.get_with_offset(2);
+                if let Some(cell_player) = cell {
                     if strike_player == cell_player {
                         strike += 1;
 
                         match strike {
                             2 => {
-                                if strike_player == player {
-                                    p1_aligns2 += 1;
-                                } else {
-                                    p2_aligns2 += 1;
+                                if (is_playable(before2) && is_playable(before1)) // space 2 before
+                                    || (is_playable(after1()) && is_playable(after2())) // space 2 after
+                                {
+                                    if strike_player == player {
+                                        p1_aligns2 += 1;
+                                    } else {
+                                        p2_aligns2 += 1;
+                                    }
                                 }
                             }
                             3 => {
-                                if strike_player == player {
-                                    p1_aligns3 += 1;
-                                } else {
-                                    p2_aligns3 += 1;
+                                println!("{:?} {} {} {} {} {}", line_iterator.iterator_type, debug_cell(before2), debug_cell(before1), debug_cell(cell_option), debug_cell(after1()), debug_cell(after2()));
+                                if (is_playable(before1)) // space 1 before
+                                    || (is_playable(after1())) // space 1 after
+                                {
+                                    if strike_player == player {
+                                        p1_aligns3 += 1;
+                                    } else {
+                                        p2_aligns3 += 1;
+                                    }
                                 }
                             }
                             4 => {
@@ -150,9 +173,10 @@ impl Game for Power4 {
                 } else {
                     strike = 0;
                 }
+                cell_option = line_iterator.next();
             }
         }
-        let p1_score = self.calculate_score(p1_aligns2, p1_aligns3) - self.calculate_score(p2_aligns2, p2_aligns3);
+        let p1_score = self.calculate_score(p1_aligns2, p1_aligns3) as i32 - self.calculate_score(p2_aligns2, p2_aligns3) as i32;
         if player == NonZeroU8::new(1u8).unwrap() {
             p1_score
         } else {
@@ -162,13 +186,12 @@ impl Game for Power4 {
 
     fn is_full(&self) -> bool {
         for i in 0..6 {
-            if self.board[i][0].is_none() {
+            if self.board[0][i].is_none() {
                 return false;
             }
         }
         true
     }
-
 
     fn print(&self) {
         println!("1 2 3 4 5 6 7");
@@ -180,6 +203,5 @@ impl Game for Power4 {
             }
             println!();
         }
-        println!("Scores: {} for player 1", self.get_score(NonZeroU8::new(1u8).unwrap()));
     }
 }

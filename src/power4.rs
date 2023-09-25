@@ -117,24 +117,40 @@ impl Game for Power4 {
         let mut p1_aligns3: u16 = 0;
         let mut p2_aligns2: u16 = 0;
         let mut p2_aligns3: u16 = 0;
-        let debug_cell = |cell: Option<Option<NonZeroU8>>| cell.map(|c| c.map(|c| c.to_string()).unwrap_or("-".to_string())).unwrap_or("X".to_string());
-        let is_playable = |cell: Option<Option<NonZeroU8>>| cell.is_some() && cell.unwrap().is_none();
+        // let debug_cell = |cell: Option<Option<NonZeroU8>>| cell.map(|c| c.map(|c| c.to_string()).unwrap_or("-".to_string())).unwrap_or("X".to_string());
+        let is_playable = |cell: Option<Option<NonZeroU8>>| cell.is_some()4 && cell.unwrap().is_none();
         for mut line_iterator in self.all_lines() {
             let mut strike_player = NonZeroU8::new(1u8).unwrap();
             let mut strike: u8 = 0;
-            let before2 = line_iterator.get_with_offset(-2);
-            let before1 = line_iterator.get_with_offset(-1);
             let mut cell_option = line_iterator.get_with_offset(0);
             while let Some(cell) = cell_option {
-                let after1 = || line_iterator.get_with_offset(1);
-                let after2 = || line_iterator.get_with_offset(2);
                 if let Some(cell_player) = cell {
                     if strike_player == cell_player {
+                        let before4 = || line_iterator.get_with_offset(-4);
+                        let before3 = || line_iterator.get_with_offset(-3);
+                        let before2 = || line_iterator.get_with_offset(-2);
+                        // let before1 = || line_iterator.get_with_offset(-1);
+                        let after1 = || line_iterator.get_with_offset(1);
+                        let after2 = || line_iterator.get_with_offset(2);
+
                         strike += 1;
+                        /*
+                        println!(
+                            "{:?} ({strike}) {} {} {} {} [{}] {} {}",
+                            line_iterator.iterator_type,
+                            debug_cell(before4()),
+                            debug_cell(before3()),
+                            debug_cell(before2()),
+                            debug_cell(before1()),
+                            debug_cell(cell_option),
+                            debug_cell(after1()),
+                            debug_cell(after2())
+                        );
+                        */
 
                         match strike {
                             2 => {
-                                if (is_playable(before2) && is_playable(before1)) // space 2 before
+                                if (is_playable(before3()) && is_playable(before2())) // space 2 before
                                     || (is_playable(after1()) && is_playable(after2())) // space 2 after
                                 {
                                     if strike_player == player {
@@ -145,8 +161,7 @@ impl Game for Power4 {
                                 }
                             }
                             3 => {
-                                println!("{:?} {} {} {} {} {}", line_iterator.iterator_type, debug_cell(before2), debug_cell(before1), debug_cell(cell_option), debug_cell(after1()), debug_cell(after2()));
-                                if (is_playable(before1)) // space 1 before
+                                if (is_playable(before4())) // space 1 before
                                     || (is_playable(after1())) // space 1 after
                                 {
                                     if strike_player == player {

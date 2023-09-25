@@ -1,4 +1,3 @@
-use std::num::NonZeroU8;
 use crate::power4::Power4;
 use strum_macros::EnumIter;
 use crate::game::Game;
@@ -37,6 +36,13 @@ impl BoardIterator<'_> {
         }
     }
 
+    pub fn increment(&mut self) -> (isize, isize) {
+        let (y, x) = self.get_coords_with_offset(1);
+        self.y = y;
+        self.x = x;
+        (y, x)
+    }
+
     pub fn get_with_offset(&self, offset: isize) -> Option<<Self as Iterator>::Item> {
         let (y, x) = self.get_coords_with_offset(offset);
         if x < 0 || x >= 7 || y < 0 || y >= 6 {
@@ -44,15 +50,28 @@ impl BoardIterator<'_> {
         }
         Some(self.game.get_isize((y, x)))
     }
+
+    pub fn to_string(self) -> String {
+        let mut result = String::new();
+        for cell in self {
+            result.push(match cell {
+                Some(player) => match player.get() {
+                    1 => '1',
+                    2 => '2',
+                    _ => '-',
+                },
+                None => 'X',
+            });
+        }
+        result
+    }
 }
 
 impl<'a> Iterator for BoardIterator<'a> {
     type Item = Option<<Power4 as Game>::Player>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let (y, x) = self.get_coords_with_offset(1);
-        self.y = y;
-        self.x = x;
+        let (y, x) = self.increment();
         if self.x < 0 || self.x >= 7 || self.y < 0 || self.y >= 6 {
             return None;
         }

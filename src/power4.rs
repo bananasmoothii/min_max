@@ -191,7 +191,7 @@ impl Game for Power4 {
                 cell_option = line_iterator.next();
             }
         }
-        let p1_score = self.calculate_score(p1_aligns2, p1_aligns3) as i32 - self.calculate_score(p2_aligns2, p2_aligns3) as i32;
+        let p1_score = self.calculate_score(p1_aligns2, p1_aligns3) - self.calculate_score(p2_aligns2, p2_aligns3);
         if player == NonZeroU8::new(1u8).unwrap() {
             p1_score
         } else {

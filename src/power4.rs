@@ -118,7 +118,7 @@ impl Game for Power4 {
         let mut p2_aligns2: u16 = 0;
         let mut p2_aligns3: u16 = 0;
         // let debug_cell = |cell: Option<Option<NonZeroU8>>| cell.map(|c| c.map(|c| c.to_string()).unwrap_or("-".to_string())).unwrap_or("X".to_string());
-        let is_playable = |cell: Option<Option<NonZeroU8>>| cell.is_some()4 && cell.unwrap().is_none();
+        let is_playable = |cell: Option<Option<NonZeroU8>>| cell.is_some() && cell.unwrap().is_none();
         for mut line_iterator in self.all_lines() {
             let mut strike_player = NonZeroU8::new(1u8).unwrap();
             let mut strike: u8 = 0;

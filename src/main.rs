@@ -5,6 +5,8 @@ use crate::power4::Power4;
 
 mod power4;
 mod game;
+mod min_max;
+mod scalar;
 
 fn main() {
     let mut game = Power4::new();

@@ -2,7 +2,7 @@ use crate::power4::Power4;
 use strum_macros::EnumIter;
 use crate::game::Game;
 
-#[derive(EnumIter, Debug)]
+#[derive(EnumIter, Debug, Copy, Clone)]
 pub enum P4IteratorType {
     Vertical,
     Horizontal,

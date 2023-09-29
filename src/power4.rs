@@ -1,23 +1,32 @@
 mod iteration;
+mod tests;
 
+use std::cmp::min;
 use std::num::NonZeroU8;
 
 use crate::game::Game;
 use crate::power4::iteration::{BoardIterator, P4IteratorType};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Power4 {
     board: [[Option<NonZeroU8>; 7]; 6],
+    plays: u16,
+    last_played_coords: Option<(usize, usize)>,
 }
 
 impl Power4 {
     pub fn new() -> Power4 {
         Power4 {
             board: [[None; 7]; 6],
+            plays: 0,
+            last_played_coords: None,
         }
     }
 
-    fn all_lines(&self) -> Vec<BoardIterator> {
+    /**
+     * Returns all iterators for all lines having 4 or more cells
+     */
+    fn all_lines_longer_4(&self) -> Vec<BoardIterator> {
         let mut iterators: Vec<BoardIterator> = Vec::with_capacity(7 + 6 + 2 * 7); // 7 horizontal + 6 vertical + 2 * 7 diagonal
 
         for y in 0..6 {
@@ -29,33 +38,53 @@ impl Power4 {
         }
 
         // Diagonal down -> starting here:
-        // X  X  X  X  X  X  X
+        // X  X  X  X  -  -  -
         // X  -  -  -  -  -  -
         // X  -  -  -  -  -  -
-        // X  -  -  -  -  -  -
-        // X  -  -  -  -  -  -
-        // X  -  -  -  -  -  -
-        for x in 0..7 {
+        // -  -  -  -  -  -  -
+        // -  -  -  -  -  -  -
+        // -  -  -  -  -  -  -
+        for x in 0..=3 {
             iterators.push(BoardIterator::new_at(&self, P4IteratorType::DiagonalDown, x, 0));
         }
-        for y in 1..6 {
+        for y in 1..=3 {
             iterators.push(BoardIterator::new_at(&self, P4IteratorType::DiagonalDown, 0, y));
         }
 
         // Diagonal up -> starting here:
+        // -  -  -  -  -  -  -
+        // -  -  -  -  -  -  -
+        // -  -  -  -  -  -  -
         // X  -  -  -  -  -  -
         // X  -  -  -  -  -  -
-        // X  -  -  -  -  -  -
-        // X  -  -  -  -  -  -
-        // X  -  -  -  -  -  -
-        // X  X  X  X  X  X  X
-        for y in 0..6 {
+        // X  X  X  X  -  -  -
+        for y in 3..=5 {
             iterators.push(BoardIterator::new_at(&self, P4IteratorType::DiagonalUp, 0, y));
         }
-        for x in 1..7 {
+        for x in 1..=3 {
             iterators.push(BoardIterator::new_at(&self, P4IteratorType::DiagonalUp, x, 5));
         }
 
+        iterators
+    }
+
+    fn lines_passing_at_longer_4(&self, x: usize, y: usize) -> Vec<BoardIterator> {
+        let x = x as isize;
+        let y = y as isize;
+        let mut iterators = vec![
+            BoardIterator::new_at(&self, P4IteratorType::Horizontal, 0, y),
+            BoardIterator::new_at(&self, P4IteratorType::Vertical, x, 0),
+        ];
+        if x <= 3 && y <= 3 {
+            let subtract = min(x, y);
+            // one of x - subtract or y - subtract is 0
+            iterators.push(BoardIterator::new_at(&self, P4IteratorType::DiagonalDown, x - subtract, y - subtract));
+        }
+        let y_from_bottom = 5 - y;
+        if x <= 3 && y_from_bottom <= 3 {
+            let subtract = min(x, y_from_bottom);
+            iterators.push(BoardIterator::new_at(&self, P4IteratorType::DiagonalUp, x - subtract, y + subtract));
+        }
         iterators
     }
 
@@ -97,6 +126,7 @@ impl Game for Power4 {
         for i in 0..6 {
             if self.board[5 - i][column].is_none() {
                 self.board[5 - i][column] = Some(player);
+                self.plays += 1;
                 return Ok(());
             }
         }
@@ -119,7 +149,7 @@ impl Game for Power4 {
         let mut p2_aligns3: u16 = 0;
         // let debug_cell = |cell: Option<Option<NonZeroU8>>| cell.map(|c| c.map(|c| c.to_string()).unwrap_or("-".to_string())).unwrap_or("X".to_string());
         let is_playable = |cell: Option<Option<NonZeroU8>>| cell.is_some() && cell.unwrap().is_none();
-        for mut line_iterator in self.all_lines() {
+        for mut line_iterator in self.all_lines_longer_4() {
             let mut strike_player = NonZeroU8::new(1u8).unwrap();
             let mut strike: u8 = 0;
             let mut cell_option = line_iterator.get_with_offset(0);
@@ -199,6 +229,38 @@ impl Game for Power4 {
         }
     }
 
+    fn get_winner(&self) -> Option<Self::Player> {
+        if self.last_played_coords.is_none() {
+            return None;
+        }
+        let (last_x, last_y) = self.last_played_coords.unwrap();
+        for mut line_iterator in self.lines_passing_at_longer_4(last_x, last_y) {
+            let mut strike_player = NonZeroU8::new(1u8).unwrap();
+            let mut strike: u8 = 0;
+            let mut cell_option = line_iterator.get_with_offset(0);
+            while let Some(cell) = cell_option {
+                if let Some(cell_player) = cell {
+                    if strike_player == cell_player {
+                        strike += 1;
+
+                        if strike == 4 {
+                            return Some(cell_player);
+                        }
+                    } else {
+                        strike_player = cell_player;
+
+                        strike = 1;
+                    }
+                } else {
+                    strike = 0;
+                }
+                cell_option = line_iterator.next();
+            }
+        }
+        None
+    }
+
+
     fn is_full(&self) -> bool {
         for i in 0..6 {
             if self.board[0][i].is_none() {
@@ -206,6 +268,12 @@ impl Game for Power4 {
             }
         }
         true
+    }
+
+    fn possible_plays(&self) -> Vec<usize> {
+        (0..=6)
+            .filter(|&column| self.get((0, column)).is_none())
+            .collect::<Vec<usize>>()
     }
 
     fn print(&self) {
@@ -218,5 +286,9 @@ impl Game for Power4 {
             }
             println!();
         }
+    }
+
+    fn plays(&self) -> u16 {
+        self.plays
     }
 }

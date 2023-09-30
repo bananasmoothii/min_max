@@ -291,4 +291,8 @@ impl Game for Power4 {
     fn plays(&self) -> u16 {
         self.plays
     }
+
+    fn last_play(&self) -> Option<Self::InputCoordinate> {
+        self.last_played_coords.map(|(x, _)| x)
+    }
 }

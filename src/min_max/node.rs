@@ -1,28 +1,29 @@
 use std::fmt::{Debug, Formatter};
+use crate::game::state::GameState;
 use crate::game::Game;
-use crate::game::player::Player;
+use crate::game::state::GameState::PlayersTurn;
 
 pub struct GameNode<G: Game> {
     depth: u32,
     weight: Option<G::Score>,
     children: Vec<GameNode<G>>,
     pub game: G,
-    pub player_who_played: G::Player,
+    pub game_state: GameState<G>,
 }
 
 impl<G: Game> GameNode<G> {
-    pub fn new(game: G, depth: u32, weight: Option<G::Score>, player_who_played: G::Player) -> GameNode<G> {
+    pub fn new(game: G, depth: u32, weight: Option<G::Score>, game_state: GameState<G>) -> GameNode<G> {
         GameNode {
             depth,
             weight,
             children: Vec::new(),
             game,
-            player_who_played,
+            game_state,
         }
     }
 
-    pub fn new_root(game: G, beginning_player: G::Player) -> GameNode<G> {
-        GameNode::new(game, 0, None, beginning_player.complementary())
+    pub fn new_root(game: G, starting_player: G::Player) -> GameNode<G> {
+        GameNode::new(game, 0, None, PlayersTurn(starting_player))
     }
 
     // Getters
@@ -33,12 +34,11 @@ impl<G: Game> GameNode<G> {
     pub fn weight(&self) -> Option<G::Score> {
         self.weight
     }
-    pub fn children_mut(&mut self) -> &mut Vec<GameNode<G>> {
-        &mut self.children
-    }
-
     pub fn children(&self) -> &Vec<GameNode<G>> {
         &self.children
+    }
+    pub fn children_mut(&mut self) -> &mut Vec<GameNode<G>> {
+        &mut self.children
     }
 
     // Setters
@@ -48,6 +48,10 @@ impl<G: Game> GameNode<G> {
     }
     pub fn set_children(&mut self, children: Vec<GameNode<G>>) {
         self.children = children;
+    }
+
+    pub fn print_root(&self) {
+        self.game.print();
     }
 }
 

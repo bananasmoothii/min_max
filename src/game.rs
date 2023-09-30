@@ -1,4 +1,5 @@
 pub mod player;
+pub(crate) mod state;
 
 use crate::game::player::Player;
 use crate::scalar::Scalar;
@@ -6,7 +7,7 @@ use crate::scalar::Scalar;
 pub trait Game : Clone {
     type Coordinate;
 
-    type InputCoordinate: Copy;
+    type InputCoordinate: Copy + PartialEq;
 
     type Player: Player;
 
@@ -30,4 +31,9 @@ pub trait Game : Clone {
      * Number of plays made in the game
      */
     fn plays(&self) -> u16;
+
+    /**
+     * Last play made in the game. None only if no play has been made yet.
+     */
+    fn last_play(&self) -> Option<Self::InputCoordinate>;
 }

@@ -1,6 +1,7 @@
+use std::fmt::{Debug, Display};
 use std::num::{NonZeroU8};
 
-pub trait Player: PartialEq + Copy {
+pub trait Player: PartialEq + Copy + Debug + Display {
     fn other(&self) -> Self;
 }
 

@@ -1,13 +1,15 @@
 pub mod player;
 pub(crate) mod state;
 
+use std::fmt::{Display};
+use std::hash::Hash;
 use crate::game::player::Player;
 use crate::scalar::Scalar;
 
 pub trait Game : Clone {
     type Coordinate;
 
-    type InputCoordinate: Copy + PartialEq;
+    type InputCoordinate: Copy + Eq + Ord + Hash + Display;
 
     type Player: Player;
 

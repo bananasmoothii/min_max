@@ -2,7 +2,6 @@ use std::io;
 use std::num::NonZeroU8;
 use crate::game::Game;
 use crate::game::player::Player;
-use crate::game::state::GameState::PlayersTurn;
 use crate::min_max::node::GameNode;
 use crate::power4::Power4;
 
@@ -12,61 +11,63 @@ mod min_max;
 mod scalar;
 
 fn main() {
+    let max_depth = 7;
+
     let p1 = NonZeroU8::new(1).unwrap();
     let p2 = NonZeroU8::new(2).unwrap();
 
-    let mut current_player = p1;
+    let bot_player: NonZeroU8 = p2;
 
-    let bot_player: NonZeroU8 = if ask_start() { p2 } else { p1 };
+    let mut current_player = if ask_start() { p1 } else { p2 };
 
-    let mut original_game_tree: GameNode<Power4> = GameNode::new_root(Power4::new(), p1);
-    let mut game_node = &mut original_game_tree;
+    let mut game_tree: GameNode<Power4> = GameNode::new_root(Power4::new(), current_player);
 
     let mut p1_score: i32 = 0;
     loop {
         println!();
-        game_node.game.print();
+        game_tree.game.print();
         println!("Scores: {p1_score} for player 1");
         println!();
         println!("Player {current_player}'s turn");
         if current_player == bot_player {
-            game_node = game_node.choose_best_child_mut().unwrap_or_else(|| panic!("No options to choose from!"));
+            game_tree.explore_children(bot_player, max_depth, game_tree.game.plays() as u32);
+            // println!("Tree:\n {}", game_tree.debug(3));
+            game_tree = game_tree.into_best_child()
         } else {
-            let column = get_input();
-            if let Some(new_node) = game_node.get_node_with_play_mut(column) {
-                game_node = new_node; // no need to play, play is already done
+            let column = get_user_input();
+            let had_children = !game_tree.children().is_empty();
+            let (is_known_move, mut new_game_tree) = game_tree.try_into_child(column - 1);
+            if is_known_move {
+                game_tree = new_game_tree;
             } else {
-                println!("Unpredicted move");
-                let result = game_node.game.clone().play(current_player, column);
+                if had_children {
+                    println!("Unexpected move... Maybe you are a pure genius, or a pure idiot.");
+                }
+                // Here, new_game_tree is actually game_tree, the ownership was given back to us
+                let result = new_game_tree.game.play(current_player, column - 1);
                 if let Err(e) = result {
-                    println!("Invalid move: {e}\n");
+                    println!("{}", e);
+                    game_tree = new_game_tree;
                     continue;
                 }
-                let new_node = GameNode::new(
-                    game_node.game.clone(),
-                    game_node.depth() + 1,
-                    None,
-                    PlayersTurn(current_player.other())
-                );
-                game_node.children_mut().push(new_node); // add it to tree, we can't own it because we need its reference
-                game_node = game_node.children_mut().last_mut().unwrap();
+                game_tree = GameNode::new_root(new_game_tree.game, current_player.other());
             }
         }
 
-        p1_score = game_node.game.get_score(p1);
+        p1_score = game_tree.game.get_score(p1);
 
         if p1_score == <Power4 as Game>::Score::MAX || p1_score == <Power4 as Game>::Score::MIN {
             println!("Player {current_player} won!");
-            game_node.game.print();
+            game_tree.game.print();
             break;
         }
-        if game_node.game.is_full() {
+        if game_tree.game.is_full() {
             println!("Draw!");
-            game_node.game.print();
+            game_tree.game.print();
             break;
         }
-        current_player = if current_player == p1 { p2 } else { p1 };
-    };
+        current_player = current_player.other();
+    }
 }
 
 fn ask_start() -> bool {
@@ -86,7 +87,7 @@ fn ask_start() -> bool {
     }
 }
 
-fn get_input() -> usize {
+fn get_user_input() -> usize {
     loop {
         println!("please specify a column from 1 to 7:");
         let mut input = String::new();

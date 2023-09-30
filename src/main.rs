@@ -11,7 +11,7 @@ mod min_max;
 mod scalar;
 
 fn main() {
-    let max_depth = 7;
+    let max_depth = 8;
 
     let p1 = NonZeroU8::new(1).unwrap();
     let p2 = NonZeroU8::new(2).unwrap();

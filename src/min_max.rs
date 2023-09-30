@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use rayon::iter::{IntoParallelIterator, ParallelBridge, ParallelIterator};
 use crate::game::Game;
 use crate::game::player::Player;
 use crate::game::state::GameState::{Draw, PlayersTurn, WonBy};
@@ -9,7 +10,7 @@ use crate::scalar::Scalar;
 
 pub mod node;
 
-impl<G: Game> GameNode<G> {
+impl<G: Game + Send + Sync> GameNode<G> {
     pub fn explore_children(&mut self, bot_player: G::Player, max_depth: u32, real_plays: u32) {
         self.explore_children_recur(bot_player, max_depth, match self.game_state {
             PlayersTurn(playing_player) => playing_player,
@@ -27,9 +28,17 @@ impl<G: Game> GameNode<G> {
         if self.check_draw() { return; }
 
         self.fill_children(now_playing);
-        for child in self.children_mut().values_mut() {
+
+        // tokio_scoped::scope(|s| {
+        //     for child in self.children.values_mut() {
+        //         s.spawn(async {
+        //             child.explore_children_recur(bot_player, max_depth, now_playing.other(), real_plays);
+        //         });
+        //     }
+        // });
+        self.children.values_mut().par_bridge().into_par_iter().for_each(|child| {
             child.explore_children_recur(bot_player, max_depth, now_playing.other(), real_plays);
-        }
+        });
     }
 
     fn fill_children(&mut self, now_playing: <G as Game>::Player) {
@@ -123,43 +132,9 @@ impl<G: Game> GameNode<G> {
         }))
     }
 
-    /*
-    pub fn choose_best_child_mut(&mut self) -> Option<&mut Self> {
-        if self.children().is_empty() {
-            return None;
-        }
-        let weight = self.weight();
-        self.children_mut().iter_mut().find(|child| child.weight() == weight)
-    }
-     */
-
     pub fn into_best_child(self) -> Self {
         self.children.into_values()
             .max_by_key(|child| child.weight())
             .unwrap()
     }
-
-    /*
-        pub fn play_and_get_played_node<'a>(&'a mut self, player: G::Player, input_coord: G::InputCoordinate) -> Result<&'a mut Self, &str> {
-            let new_node = if let Some(new_node) = self.get_node_with_play_mut(input_coord) {
-                new_node // no need to play, play is already done
-            } else {
-                println!("Unpredicted move");
-                let result = self.game.clone().play(player, input_coord);
-                if let Err(e) = result {
-                    return Err(e);
-                }
-                let new_node = GameNode::new(
-                    self.game.clone(),
-                    self.depth() + 1,
-                    None,
-                    PlayersTurn(player.other()),
-                );
-                self.children_mut().push(new_node); // add it to tree, we can't own it because we need its reference
-                self.children_mut().last_mut().unwrap()
-            };
-            Ok(new_node)
-        }
-
-     */
 }

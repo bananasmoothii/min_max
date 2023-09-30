@@ -6,10 +6,10 @@ use std::hash::Hash;
 use crate::game::player::Player;
 use crate::scalar::Scalar;
 
-pub trait Game : Clone {
+pub trait Game : Clone + Send {
     type Coordinate;
 
-    type InputCoordinate: Copy + Eq + Ord + Hash + Display;
+    type InputCoordinate: Copy + Eq + Ord + Hash + Display + Send + Sync;
 
     type Player: Player;
 

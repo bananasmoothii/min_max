@@ -4,6 +4,7 @@ use crate::game::state::GameState;
 use crate::game::Game;
 use crate::game::state::GameState::PlayersTurn;
 
+#[derive(Clone)]
 pub struct GameNode<G: Game> {
     depth: u32,
     weight: Option<G::Score>,

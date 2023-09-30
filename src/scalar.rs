@@ -2,7 +2,7 @@ use std::fmt::{Debug, Display};
 use std::ops::{Add, Sub};
 
 #[allow(non_snake_case)]
-pub trait Scalar: Sized + Add + Sub + PartialEq + Ord + Copy + Clone + Display + Debug {
+pub trait Scalar: Sized + Add + Sub + PartialEq + Ord + Copy + Clone + Display + Debug + Send + Sync {
     fn MIN() -> Self;
     fn MAX() -> Self;
 

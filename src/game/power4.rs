@@ -5,7 +5,7 @@ use std::cmp::min;
 use std::num::NonZeroU8;
 
 use crate::game::Game;
-use crate::power4::iteration::{BoardIterator, P4IteratorType};
+use crate::game::power4::iteration::{BoardIterator, P4IteratorType};
 
 #[derive(Debug, Clone)]
 pub struct Power4 {
@@ -71,10 +71,11 @@ impl Power4 {
     fn lines_passing_at_longer_4(&self, x: usize, y: usize) -> Vec<BoardIterator> {
         let x = x as isize;
         let y = y as isize;
-        let mut iterators = vec![
-            BoardIterator::new_at(&self, P4IteratorType::Horizontal, 0, y),
-            BoardIterator::new_at(&self, P4IteratorType::Vertical, x, 0),
-        ];
+        let mut iterators = Vec::with_capacity(4);
+
+        iterators.push(BoardIterator::new_at(&self, P4IteratorType::Horizontal, 0, y));
+        iterators.push(BoardIterator::new_at(&self, P4IteratorType::Vertical, x, 0));
+
         if x <= 3 && y <= 3 {
             let subtract = min(x, y);
             // one of x - subtract or y - subtract is 0

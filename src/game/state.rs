@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter};
 use crate::game::Game;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum GameState<G: Game> {
     PlayersTurn(G::Player),
     Draw,

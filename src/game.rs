@@ -1,5 +1,6 @@
 pub mod player;
 pub(crate) mod state;
+pub mod power4;
 
 use std::fmt::{Display};
 use std::hash::Hash;

@@ -1,4 +1,4 @@
-use crate::power4::Power4;
+use crate::game::power4::Power4;
 use strum_macros::EnumIter;
 use crate::game::Game;
 

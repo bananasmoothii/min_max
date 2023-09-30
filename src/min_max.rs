@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use rayon::iter::{IntoParallelIterator, ParallelBridge, ParallelIterator};
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelBridge, ParallelDrainFull, ParallelIterator};
 use crate::game::Game;
 use crate::game::player::Player;
 use crate::game::state::GameState::{Draw, PlayersTurn, WonBy};
@@ -12,47 +12,56 @@ pub mod node;
 
 impl<G: Game + Send + Sync> GameNode<G> {
     pub fn explore_children(&mut self, bot_player: G::Player, max_depth: u32, real_plays: u32) {
+        println!("Exploring children...");
         self.explore_children_recur(bot_player, max_depth, match self.game_state {
             PlayersTurn(playing_player) => playing_player,
             _ => panic!("Cannot explore children of a node that is not starting or played by a player"),
-        }, real_plays);
+        }, real_plays, self.children.is_empty());
 
+        println!("Completing weights...");
         self.complete_weights(bot_player);
     }
 
-    fn explore_children_recur(&mut self, bot_player: G::Player, max_depth: u32, now_playing: G::Player, real_plays: u32) {
+    fn explore_children_recur(&mut self, bot_player: G::Player, max_depth: u32, now_playing: G::Player, real_plays: u32, checks: bool) {
         if self.check_max_depth(bot_player, max_depth, real_plays) { return; }
 
-        if self.check_winner(bot_player) { return; }
+        if checks || self.children.is_empty() {
+            if self.check_winner(bot_player) { return; }
 
-        if self.check_draw() { return; }
+            if self.check_draw() { return; }
+        }
 
-        self.fill_children(now_playing);
-
-        // tokio_scoped::scope(|s| {
-        //     for child in self.children.values_mut() {
-        //         s.spawn(async {
-        //             child.explore_children_recur(bot_player, max_depth, now_playing.other(), real_plays);
-        //         });
-        //     }
-        // });
-        self.children.values_mut().par_bridge().into_par_iter().for_each(|child| {
-            child.explore_children_recur(bot_player, max_depth, now_playing.other(), real_plays);
-        });
+        if let Some(mut new_children) = self.get_children(now_playing) {
+            if self.depth() - real_plays <= 2 {
+                // parallelize
+                new_children.par_iter_mut().for_each(|(_, child)| {
+                    child.explore_children_recur(bot_player, max_depth, now_playing.other(), real_plays, true)
+                });
+            } else {
+                new_children.iter_mut().for_each(|(_, child)| {
+                    child.explore_children_recur(bot_player, max_depth, now_playing.other(), real_plays, false)
+                });
+            }
+            self.children = new_children;
+        } else {
+            self.children.iter_mut().for_each(|(_, child)| {
+                child.explore_children_recur(bot_player, max_depth, now_playing.other(), real_plays, false);
+            });
+        }
     }
 
-    fn fill_children(&mut self, now_playing: <G as Game>::Player) {
+    fn get_children(&self, now_playing: <G as Game>::Player) -> Option<HashMap<G::InputCoordinate, Self>> {
         if self.children.is_empty() {
-            let children: HashMap<G::InputCoordinate, Self> = self.game.possible_plays().iter()
+            Some(self.game.possible_plays().iter()
                 .map(|&input_coord| {
                     let mut game = self.game.clone();
                     game.play(now_playing, input_coord).unwrap(); // should not panic as input_coord is a possible play
 
                     (input_coord, GameNode::new(game, self.depth() + 1, None, PlayersTurn(now_playing.other())))
                 })
-                .collect();
-
-            self.children = children;
+                .collect())
+        } else {
+            None
         }
     }
 
@@ -111,16 +120,17 @@ impl<G: Game + Send + Sync> GameNode<G> {
             }
             return;
         }
-        for child in self.children_mut().values_mut() {
-            child.complete_weights(bot_player);
-        }
+
+        // TODO: alpha/beta pruning
+
+        self.children.iter_mut().for_each(|(_, child)| child.complete_weights(bot_player));
 
         let children_weights = self.children().values()
             .map(|child| child.weight().unwrap()); // the tree should be completed, so no None should be found
 
         let now_playing = match self.game_state {
             PlayersTurn(now_playing) => now_playing,
-            _ => panic!("Cannot complete weights of a node that is not starting or played by a player"),
+            _ => panic!("Cannot complete weights of a node that is not starting or played by a player. State was: {}", self.game_state),
         };
 
         self.set_weight(Some(if now_playing == bot_player {
@@ -132,9 +142,10 @@ impl<G: Game + Send + Sync> GameNode<G> {
         }))
     }
 
-    pub fn into_best_child(self) -> Self {
-        self.children.into_values()
-            .max_by_key(|child| child.weight())
-            .unwrap()
+    pub fn into_best_child(mut self) -> Self {
+        let target_weight = self.weight().unwrap();
+        self.children.drain() // parallelization here slows downs the prgram a lot
+            .find(|(_, child)| child.weight().unwrap() == target_weight)
+            .unwrap().1
     }
 }

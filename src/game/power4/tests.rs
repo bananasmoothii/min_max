@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod iterators_test {
-    use crate::power4::Power4;
+    use crate::game::power4::Power4;
 
     #[test]
     fn lines_passing_at() {

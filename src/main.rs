@@ -3,15 +3,16 @@ use std::num::NonZeroU8;
 use crate::game::Game;
 use crate::game::player::Player;
 use crate::min_max::node::GameNode;
-use crate::power4::Power4;
+use crate::game::power4::Power4;
 
-mod power4;
 mod game;
 mod min_max;
 mod scalar;
 
 fn main() {
-    let max_depth = 8;
+    let max_depth = 9;
+
+    let mut times: Vec<u128> = Vec::new();
 
     let p1 = NonZeroU8::new(1).unwrap();
     let p2 = NonZeroU8::new(2).unwrap();
@@ -30,9 +31,14 @@ fn main() {
         println!();
         println!("Player {current_player}'s turn");
         if current_player == bot_player {
+            let start = std::time::Instant::now();
             game_tree.explore_children(bot_player, max_depth, game_tree.game.plays() as u32);
             println!("Tree:\n {}", game_tree.debug(3));
-            game_tree = game_tree.into_best_child()
+            println!("Into best child...");
+            game_tree = game_tree.into_best_child();
+            let time = start.elapsed().as_millis();
+            times.push(time);
+            println!("Done in {}ms", time);
         } else {
             let column = get_user_input();
             let had_children = !game_tree.children().is_empty();
@@ -68,6 +74,7 @@ fn main() {
         }
         current_player = current_player.other();
     }
+    println!("Average time: {}ms", times.iter().sum::<u128>() / times.len() as u128);
 }
 
 fn ask_start() -> bool {

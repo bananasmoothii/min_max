@@ -121,7 +121,7 @@ impl<G: Game + Send + Sync> GameNode<G> {
             return;
         }
 
-        // TODO: alpha/beta pruning
+        // TODO: alpha/beta pruning, but we need to know the node siblings or do this on child of childs
 
         self.children.iter_mut().for_each(|(_, child)| child.complete_weights(bot_player));
 

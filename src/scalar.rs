@@ -9,25 +9,8 @@ pub trait Scalar: Sized + Add + Sub + PartialEq + Ord + Copy + Clone + Display +
     fn ZERO() -> Self;
 
     fn div(&self, by: i32) -> Self;
-}
 
-#[allow(non_snake_case)]
-impl Scalar for i16 {
-    fn MIN() -> Self {
-        i16::MIN
-    }
-
-    fn MAX() -> Self {
-        i16::MAX
-    }
-
-    fn ZERO() -> Self {
-        0
-    }
-
-    fn div(&self, by: i32) -> Self {
-        (*self as i32 / by) as i16
-    }
+    fn add_towards_0(&self, add: i32) -> Self;
 }
 
 #[allow(non_snake_case)]
@@ -46,5 +29,15 @@ impl Scalar for i32 {
 
     fn div(&self, by: i32) -> Self {
         *self / by
+    }
+
+    fn add_towards_0(&self, add: i32) -> Self {
+        if *self > 0 {
+            self - add
+        } else if *self < 0 {
+            self + add
+        } else {
+            *self
+        }
     }
 }

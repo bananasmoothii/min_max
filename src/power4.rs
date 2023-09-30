@@ -124,9 +124,11 @@ impl Game for Power4 {
             return Err("Column out of bounds");
         }
         for i in 0..6 {
-            if self.board[5 - i][column].is_none() {
-                self.board[5 - i][column] = Some(player);
+            let y = 5 - i;
+            if self.board[y][column].is_none() {
+                self.board[y][column] = Some(player);
                 self.plays += 1;
+                self.last_played_coords = Some((y, column));
                 return Ok(());
             }
         }
@@ -233,7 +235,7 @@ impl Game for Power4 {
         if self.last_played_coords.is_none() {
             return None;
         }
-        let (last_x, last_y) = self.last_played_coords.unwrap();
+        let (last_y, last_x) = self.last_played_coords.unwrap();
         for mut line_iterator in self.lines_passing_at_longer_4(last_x, last_y) {
             let mut strike_player = NonZeroU8::new(1u8).unwrap();
             let mut strike: u8 = 0;

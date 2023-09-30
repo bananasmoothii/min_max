@@ -33,16 +33,18 @@ impl<G: Game> GameNode<G> {
     }
 
     fn fill_children(&mut self, now_playing: <G as Game>::Player) {
-        let children: HashMap<G::InputCoordinate, Self> = self.game.possible_plays().iter()
-            .map(|&input_coord| {
-                let mut game = self.game.clone();
-                game.play(now_playing, input_coord).unwrap(); // should not panic as input_coord is a possible play
+        if self.children.is_empty() {
+            let children: HashMap<G::InputCoordinate, Self> = self.game.possible_plays().iter()
+                .map(|&input_coord| {
+                    let mut game = self.game.clone();
+                    game.play(now_playing, input_coord).unwrap(); // should not panic as input_coord is a possible play
 
-                (input_coord, GameNode::new(game, self.depth() + 1, None, PlayersTurn(now_playing.other())))
-            })
-            .collect();
+                    (input_coord, GameNode::new(game, self.depth() + 1, None, PlayersTurn(now_playing.other())))
+                })
+                .collect();
 
-        self.set_children(children);
+            self.children = children;
+        }
     }
 
     fn check_draw(&mut self) -> bool {
@@ -73,15 +75,16 @@ impl<G: Game> GameNode<G> {
         if self.depth() >= max_depth + real_plays {
             if Self::USE_GAME_SCORE { // I know this is a constant, but this allows me to change it easily
                 let score = self.game.get_score(bot_player); // computing score here
-                self.set_weight(Some(score));
                 if score == G::Score::MAX() {
                     self.game_state = WonBy(bot_player);
+                    self.set_weight(Some(score.add_towards_0((self.depth() - real_plays) as i32)))
                 } else if score == G::Score::MIN() {
                     self.game_state = WonBy(bot_player.other());
+                    self.set_weight(Some(score.add_towards_0((self.depth() - real_plays) as i32)))
                 }
             } else {
                 if let Some(winner) = self.game.get_winner() {
-                    self.set_weight(Some(if winner == bot_player { G::Score::MAX() } else { G::Score::MIN() }));
+                    self.set_weight(Some((if winner == bot_player { G::Score::MAX() } else { G::Score::MIN() }).add_towards_0((self.depth() - real_plays) as i32)));
                     self.game_state = WonBy(winner);
                 } else {
                     self.set_weight(Some(G::Score::ZERO()));
@@ -95,7 +98,6 @@ impl<G: Game> GameNode<G> {
     fn complete_weights(&mut self, bot_player: G::Player) {
         if self.children().is_empty() {
             if self.weight().is_none() {
-                // self.set_weight(Some(self.game.get_score(bot_player)));
                 panic!("there should be a weight for a leaf node");
             }
             return;
@@ -112,11 +114,13 @@ impl<G: Game> GameNode<G> {
             _ => panic!("Cannot complete weights of a node that is not starting or played by a player"),
         };
 
-        self.set_weight(if now_playing == bot_player {
-            children_weights.max() // currently bot's turn and he will play the best move for him
+        self.set_weight(Some(if now_playing == bot_player {
+            // currently bot's turn and he will play the best move for him
+            children_weights.max().unwrap()
         } else {
-            children_weights.min() // currently opponent's turn and he will play the best move for him, so the worst for us
-        })
+            // currently opponent's turn and he will play the best move for him, so the worst for us
+            children_weights.min().unwrap()
+        }))
     }
 
     /*

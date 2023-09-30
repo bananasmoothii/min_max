@@ -31,7 +31,7 @@ fn main() {
         println!("Player {current_player}'s turn");
         if current_player == bot_player {
             game_tree.explore_children(bot_player, max_depth, game_tree.game.plays() as u32);
-            // println!("Tree:\n {}", game_tree.debug(3));
+            println!("Tree:\n {}", game_tree.debug(3));
             game_tree = game_tree.into_best_child()
         } else {
             let column = get_user_input();

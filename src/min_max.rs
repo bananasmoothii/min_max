@@ -1,12 +1,10 @@
-use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 
-use rayon::iter::{
-    IntoParallelIterator, IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelBridge,
-    ParallelDrainFull, ParallelIterator,
-};
+use rayon::iter::*;
 
 use crate::game::player::Player;
-use crate::game::state::GameState::{Draw, PlayersTurn, WonBy};
+use crate::game::state::GameState::*;
 use crate::game::Game;
 use crate::min_max::node::GameNode;
 use crate::scalar::Scalar;
@@ -15,26 +13,45 @@ pub mod node;
 
 impl<G: Game + Send + Sync> GameNode<G> {
     pub fn explore_children(&mut self, bot_player: G::Player, max_depth: u32, real_plays: u32) {
+        let now_playing = match self.game_state {
+            PlayersTurn(playing_player) => playing_player,
+            _ => panic!(
+                "Cannot explore children of a node that is not starting or played by a player"
+            ),
+        };
+
         println!("Exploring children...");
+
         self.explore_children_recur(
             bot_player,
             max_depth,
-            match self.game_state {
-                PlayersTurn(playing_player) => playing_player,
-                _ => panic!(
-                    "Cannot explore children of a node that is not starting or played by a player"
-                ),
-            },
+            now_playing,
             real_plays,
             self.children.is_empty(),
+            Arc::new(Mutex::new(if now_playing == bot_player {
+                G::Score::MIN()
+            } else {
+                G::Score::MAX()
+            })),
         );
 
-        println!("Completing weights...");
-        self.complete_weights(bot_player);
+        // println!("Completing weights...");
+        // self.complete_weights(bot_player);
     }
 
     const FORK_DEPTH: u32 = 2;
 
+    /// Explore children recursively
+    ///
+    /// # Parameters
+    /// * `real_plays` - number of plays made that were actually made, not just predicted
+    /// * `checks` - if true, will check if the game is won or draw, else will assume it is not
+    /// * `worst_sibling_score` - if now_playing is the bot, the minimum score to consider, because
+    ///    we are maximizing children, else the maximum score to consider because we are minimizing
+    ///    children
+    ///
+    /// # Returns
+    /// The weight of the node
     fn explore_children_recur(
         &mut self,
         bot_player: G::Player,
@@ -42,87 +59,106 @@ impl<G: Game + Send + Sync> GameNode<G> {
         now_playing: G::Player,
         real_plays: u32,
         checks: bool,
-    ) {
-        if self.check_max_depth(bot_player, max_depth, real_plays) {
-            return;
+        worst_sibling_score: Arc<Mutex<G::Score>>,
+    ) -> G::Score {
+        let do_checks = checks || self.children.is_empty();
+        if self.check_max_depth(bot_player, max_depth, real_plays)
+            || (do_checks && (self.check_winner(bot_player) || self.check_draw()))
+        {
+            return self.game.get_score(bot_player);
         }
 
-        if checks || self.children.is_empty() {
-            if self.check_winner(bot_player) {
-                return;
-            }
-
-            if self.check_draw() {
-                return;
-            }
-        }
-
-        if let Some(mut new_children) = self.get_children(now_playing) {
-            //println!("({} - {real_plays} = {} )", self.depth(), self.depth() - real_plays);
-            if self.depth() - real_plays == Self::FORK_DEPTH {
-                print!("F"); // should print 49 F (7^FORK_DEPTH = 7^2)
-                             // parallelize
-                new_children.par_iter_mut().for_each(|(_, child)| {
-                    child.explore_children_recur(
-                        bot_player,
-                        max_depth,
-                        now_playing.other(),
-                        real_plays,
-                        true,
-                    )
-                });
-            } else {
-                new_children.iter_mut().for_each(|(_, child)| {
-                    child.explore_children_recur(
-                        bot_player,
-                        max_depth,
-                        now_playing.other(),
-                        real_plays,
-                        true,
-                    )
-                });
-            }
-            self.children = new_children;
+        let maximize = now_playing == bot_player;
+        let worst_child_score = Arc::new(Mutex::new(if !maximize {
+            // inverting for children
+            G::Score::MAX()
         } else {
-            self.children.iter_mut().for_each(|(_, child)| {
-                child.explore_children_recur(
-                    bot_player,
-                    max_depth,
-                    now_playing.other(),
-                    real_plays,
-                    false,
-                );
-            });
+            G::Score::MIN()
+        }));
+        let stop = AtomicBool::new(false);
+
+        let check_children = self.fill_children(now_playing);
+
+        let maybe_explore_children = |child: &mut Self| {
+            if stop.load(Ordering::Relaxed) {
+                return None;
+            }
+            let child_score = child.explore_children_recur(
+                bot_player,
+                max_depth,
+                now_playing.other(),
+                real_plays,
+                check_children,
+                worst_child_score.clone(),
+            );
+            let worst_sibling_score = worst_sibling_score.lock().unwrap();
+
+            if maximize && child_score > *worst_sibling_score // we found better than the worst sibling, but the node above will choose the worst so we are basically useless
+                || !maximize && child_score < *worst_sibling_score
+            {
+                stop.store(true, Ordering::Relaxed);
+            }
+            Some(child_score)
+        };
+
+        //println!("({} - {real_plays} = {} )", self.depth(), self.depth() - real_plays);
+        if self.depth() - real_plays == Self::FORK_DEPTH {
+            // parallelize
+            print!("F"); // should print 49 F (7^FORK_DEPTH = 7^2)
+            let weights = self
+                .children
+                .par_iter_mut()
+                .filter_map(|(_, child)| maybe_explore_children(child));
+            if maximize {
+                let max = weights.max().unwrap();
+                self.set_weight(Some(max));
+                max
+            } else {
+                let min = weights.min().unwrap();
+                self.set_weight(Some(min));
+                min
+            }
+        } else {
+            let weights = self
+                .children
+                .iter_mut()
+                .filter_map(|(_, child)| maybe_explore_children(child));
+            if maximize {
+                let max = weights.max().unwrap();
+                self.set_weight(Some(max));
+                max
+            } else {
+                let min = weights.min().unwrap();
+                self.set_weight(Some(min));
+                min
+            }
         }
     }
 
-    fn get_children(
-        &self,
-        now_playing: <G as Game>::Player,
-    ) -> Option<HashMap<G::InputCoordinate, Self>> {
+    fn fill_children(&mut self, now_playing: <G as Game>::Player) -> bool {
         if self.children.is_empty() {
-            Some(
-                self.game
-                    .possible_plays()
-                    .iter()
-                    .map(|&input_coord| {
-                        let mut game = self.game.clone();
-                        game.play(now_playing, input_coord).unwrap(); // should not panic as input_coord is a possible play
+            self.children = self
+                .game
+                .possible_plays()
+                .iter()
+                .map(|&input_coord| {
+                    let mut game = self.game.clone();
+                    game.play(now_playing, input_coord).unwrap(); // should not panic as input_coord is a possible play
 
-                        (
-                            input_coord,
-                            GameNode::new(
-                                game,
-                                self.depth() + 1,
-                                None,
-                                PlayersTurn(now_playing.other()),
-                            ),
-                        )
-                    })
-                    .collect(),
-            )
+                    (
+                        input_coord,
+                        GameNode::new(
+                            game,
+                            self.depth() + 1,
+                            None,
+                            PlayersTurn(now_playing.other()),
+                        ),
+                    )
+                })
+                .collect();
+            true
         } else {
-            None
+            false
         }
     }
 
@@ -202,8 +238,6 @@ impl<G: Game + Send + Sync> GameNode<G> {
             }
             return;
         }
-
-        // TODO: alpha/beta pruning, but we need to know the node siblings or do this on child of childs
 
         self.children
             .iter_mut()

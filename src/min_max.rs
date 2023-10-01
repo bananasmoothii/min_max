@@ -41,6 +41,8 @@ impl<G: Game + Send + Sync> GameNode<G> {
 
     const FORK_DEPTH: u32 = 2;
 
+    const USE_GAME_SCORE: bool = false;
+
     /// Explore children recursively
     ///
     /// # Parameters
@@ -65,7 +67,20 @@ impl<G: Game + Send + Sync> GameNode<G> {
         if self.check_max_depth(bot_player, max_depth, real_plays)
             || (do_checks && (self.check_winner(bot_player) || self.check_draw()))
         {
-            return self.game.get_score(bot_player);
+            return if Self::USE_GAME_SCORE {
+                self.game.get_score(bot_player)
+            } else {
+                if let Some(winner) = self.game.get_winner() {
+                    if winner == bot_player {
+                        G::Score::MAX()
+                    } else {
+                        G::Score::MIN()
+                    }
+                    .add_towards_0((self.depth() - real_plays) as i32)
+                } else {
+                    G::Score::ZERO()
+                }
+            };
         }
 
         let maximize = now_playing == bot_player;
@@ -97,6 +112,7 @@ impl<G: Game + Send + Sync> GameNode<G> {
                 || !maximize && child_score < *worst_sibling_score
             {
                 stop.store(true, Ordering::Relaxed);
+                *worst_child_score.lock().unwrap() = child_score;
             }
             Some(child_score)
         };
@@ -187,8 +203,6 @@ impl<G: Game + Send + Sync> GameNode<G> {
         false
     }
 
-    const USE_GAME_SCORE: bool = false;
-
     //noinspection RsConstantConditionIf
     fn check_max_depth(
         &mut self,
@@ -262,11 +276,11 @@ impl<G: Game + Send + Sync> GameNode<G> {
         }))
     }
 
-    pub fn into_best_child(mut self) -> Self {
-        let target_weight = self.weight().unwrap();
-        self.children
-            .drain() // parallelization here slows downs the prgram a lot
-            .find(|(_, child)| child.weight().unwrap() == target_weight)
+    pub fn into_best_child(self) -> Self {
+        //let target_weight = self.weight().unwrap();
+        self.children // parallelization here slows downs the program a lot
+            .into_iter()
+            .max_by_key(|(_, child)| child.weight())
             .unwrap()
             .1
     }

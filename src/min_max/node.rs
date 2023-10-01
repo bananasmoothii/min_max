@@ -1,11 +1,13 @@
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
+
 use crate::game::state::GameState;
-use crate::game::Game;
 use crate::game::state::GameState::PlayersTurn;
+use crate::game::Game;
 
 #[derive(Clone)]
 pub struct GameNode<G: Game> {
+    id: u32,
     depth: u32,
     weight: Option<G::Score>,
     pub(super) children: HashMap<G::InputCoordinate, Self>,
@@ -16,6 +18,7 @@ pub struct GameNode<G: Game> {
 impl<G: Game> GameNode<G> {
     pub fn new(game: G, depth: u32, weight: Option<G::Score>, game_state: GameState<G>) -> Self {
         GameNode {
+            id: rand::random(),
             depth,
             weight,
             children: HashMap::new(),
@@ -24,8 +27,8 @@ impl<G: Game> GameNode<G> {
         }
     }
 
-    pub fn new_root(game: G, starting_player: G::Player) -> Self {
-        GameNode::new(game, 0, None, PlayersTurn(starting_player))
+    pub fn new_root(game: G, starting_player: G::Player, depth: u32) -> Self {
+        GameNode::new(game, depth, None, PlayersTurn(starting_player))
     }
 
     /**
@@ -48,6 +51,9 @@ impl<G: Game> GameNode<G> {
 
     // Getters
 
+    pub fn id(&self) -> u32 {
+        self.id
+    }
     pub fn depth(&self) -> u32 {
         self.depth
     }
@@ -86,11 +92,15 @@ impl<G: Game> GameNode<G> {
             if depth > 0 {
                 s.push_str(&*format!("{} non shown", depth));
             }
-            return s
+            return s;
         }
         let spaces = "|  ".repeat((self.depth + 1) as usize);
         for (input, child) in &self.children {
-            s += &format!("\n{spaces}({}) {input} scores {}", self.game_state, child.debug(max_depth - 1));
+            s += &format!(
+                "\n{spaces}({}) {input} scores {}",
+                self.game_state,
+                child.debug(max_depth - 1)
+            );
         }
         s
     }

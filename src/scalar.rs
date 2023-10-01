@@ -12,6 +12,8 @@ pub trait Scalar:
 
     fn div(&self, by: i32) -> Self;
 
+    /// Adds `add` to `self` if `self` is positive, subtracts `add` from `self` if `self` is negative, else returns `self`
+    /// This should not overflow, but instead saturate to `MIN` or `MAX`
     fn add_towards_0(&self, add: i32) -> Self;
 }
 
@@ -35,9 +37,9 @@ impl Scalar for i32 {
 
     fn add_towards_0(&self, add: i32) -> Self {
         if *self > 0 {
-            self - add
+            self.saturating_sub(add)
         } else if *self < 0 {
-            self + add
+            self.saturating_add(add)
         } else {
             *self
         }

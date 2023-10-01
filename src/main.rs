@@ -11,7 +11,7 @@ mod min_max;
 mod scalar;
 
 fn main() {
-    let max_depth = 9;
+    let max_depth = 10;
 
     let mut times: Vec<u128> = Vec::new();
 
@@ -22,7 +22,7 @@ fn main() {
 
     let mut current_player = if ask_start() { p1 } else { p2 };
 
-    let mut game_tree: GameNode<Power4> = GameNode::new_root(Power4::new(), current_player);
+    let mut game_tree: GameNode<Power4> = GameNode::new_root(Power4::new(), current_player, 0);
 
     let mut p1_score: i32 = 0;
     loop {
@@ -47,17 +47,18 @@ fn main() {
             if is_known_move {
                 game_tree = new_game_tree;
             } else {
+                // Here, new_game_tree is actually game_tree, the ownership was given back to us
                 if had_children {
                     println!("Unexpected move... Maybe you are a pure genius, or a pure idiot.");
                 }
-                // Here, new_game_tree is actually game_tree, the ownership was given back to us
                 let result = new_game_tree.game.play(current_player, column - 1);
                 if let Err(e) = result {
                     println!("{}", e);
                     game_tree = new_game_tree;
                     continue;
                 }
-                game_tree = GameNode::new_root(new_game_tree.game, current_player.other());
+                let depth = new_game_tree.depth() + 1;
+                game_tree = GameNode::new_root(new_game_tree.game, current_player.other(), depth);
             }
         }
 

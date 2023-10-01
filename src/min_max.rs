@@ -39,7 +39,7 @@ impl<G: Game + Send + Sync> GameNode<G> {
         // self.complete_weights(bot_player);
     }
 
-    const FORK_DEPTH: u32 = 2;
+    const FORK_DEPTH: u32 = 3;
 
     const USE_GAME_SCORE: bool = false;
 
@@ -63,6 +63,8 @@ impl<G: Game + Send + Sync> GameNode<G> {
         checks: bool,
         worst_sibling_score: Arc<Mutex<G::Score>>,
     ) -> G::Score {
+        assert!(self.depth() >= real_plays, "Negative exploration");
+
         let do_checks = checks || self.children.is_empty();
         if self.check_max_depth(bot_player, max_depth, real_plays)
             || (do_checks && (self.check_winner(bot_player) || self.check_draw()))
@@ -76,7 +78,7 @@ impl<G: Game + Send + Sync> GameNode<G> {
                     } else {
                         G::Score::MIN()
                     }
-                    .add_towards_0((self.depth() - real_plays) as i32)
+                    .add_towards_0(self.depth() as i32 - real_plays as i32)
                 } else {
                     G::Score::ZERO()
                 }
@@ -117,10 +119,13 @@ impl<G: Game + Send + Sync> GameNode<G> {
             Some(child_score)
         };
 
-        //println!("({} - {real_plays} = {} )", self.depth(), self.depth() - real_plays);
-        if self.depth() - real_plays == Self::FORK_DEPTH {
+        //let spaces = "| ".repeat(self.depth() as usize);
+        //println!("{}({})Exploring {} children of depth {} (actual: {})...", spaces, self.id(), self.children.len(), self.depth(), self.depth().overflowing_sub(real_plays).0);
+
+        //println!("({} - {real_plays} = {} )", self.depth(), self.depth().overflowing_sub(real_plays).0);
+        if self.depth().overflowing_sub(real_plays).0 == Self::FORK_DEPTH {
             // parallelize
-            print!("F"); // should print 49 F (7^FORK_DEPTH = 7^2)
+            print!("F"); // should print 49 F (7^(FORK_DEPTH-1) = 7^2)
             let weights = self
                 .children
                 .par_iter_mut()
@@ -135,7 +140,7 @@ impl<G: Game + Send + Sync> GameNode<G> {
                 min
             }
         } else {
-            let weights = self
+            /*let weights = self
                 .children
                 .iter_mut()
                 .filter_map(|(_, child)| maybe_explore_children(child));
@@ -147,7 +152,11 @@ impl<G: Game + Send + Sync> GameNode<G> {
                 let min = weights.min().unwrap();
                 self.set_weight(Some(min));
                 min
-            }
+            }*/
+            self.children.iter_mut().for_each(|(_, child)| {
+                maybe_explore_children(child);
+            });
+            (*worst_child_score.lock().unwrap()).into()
         }
     }
 

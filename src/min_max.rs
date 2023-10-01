@@ -156,7 +156,9 @@ impl<G: Game + Send + Sync> GameNode<G> {
             self.children.iter_mut().for_each(|(_, child)| {
                 maybe_explore_children(child);
             });
-            (*worst_child_score.lock().unwrap()).into()
+            let weight = (*worst_child_score.lock().unwrap()).into();
+            self.set_weight(weight);
+            weight.unwrap()
         }
     }
 

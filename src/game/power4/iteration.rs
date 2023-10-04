@@ -1,5 +1,6 @@
-use crate::game::power4::Power4;
 use strum_macros::EnumIter;
+
+use crate::game::power4::Power4;
 use crate::game::Game;
 
 #[derive(EnumIter, Debug, Copy, Clone)]
@@ -13,17 +14,22 @@ pub enum P4IteratorType {
 pub struct BoardIterator<'a> {
     game: &'a Power4,
     pub iterator_type: P4IteratorType,
-    pub x: isize,
     pub y: isize,
+    pub x: isize,
 }
 
 impl BoardIterator<'_> {
-    pub fn new_at(game: &Power4, iterator_type: P4IteratorType, x: isize, y: isize) -> BoardIterator {
+    pub fn new_at(
+        game: &Power4,
+        iterator_type: P4IteratorType,
+        x: isize,
+        y: isize,
+    ) -> BoardIterator {
         BoardIterator {
             game,
             iterator_type,
-            x,
             y,
+            x,
         }
     }
 
@@ -64,6 +70,10 @@ impl BoardIterator<'_> {
             });
         }
         result
+    }
+
+    pub fn coords(&self) -> (isize, isize) {
+        (self.y, self.x)
     }
 }
 

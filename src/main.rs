@@ -65,12 +65,12 @@ fn main() {
         p1_score = game_tree.game.get_score(p1);
 
         if p1_score == <Power4 as Game>::Score::MAX || p1_score == <Power4 as Game>::Score::MIN {
-            println!("Player {current_player} won!");
+            println!("Player {current_player} won!\n");
             game_tree.game.print();
             break;
         }
         if game_tree.game.is_full() {
-            println!("Draw!");
+            println!("Draw!\n");
             game_tree.game.print();
             break;
         }

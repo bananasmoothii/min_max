@@ -28,11 +28,6 @@ impl<G: Game + Send + Sync> GameNode<G> {
             now_playing,
             real_plays,
             self.children.is_empty(),
-            Arc::new(Mutex::new(if now_playing == bot_player {
-                G::Score::MIN()
-            } else {
-                G::Score::MAX()
-            })),
         );
 
         // println!("Completing weights...");
@@ -61,7 +56,6 @@ impl<G: Game + Send + Sync> GameNode<G> {
         now_playing: G::Player,
         real_plays: u32,
         checks: bool,
-        worst_sibling_score: Arc<Mutex<G::Score>>,
     ) -> G::Score {
         assert!(self.depth() >= real_plays, "Negative exploration");
 
@@ -101,7 +95,7 @@ impl<G: Game + Send + Sync> GameNode<G> {
 
         let maybe_explore_children = |child: &mut Self| {
             if stop.load(Ordering::Relaxed) {
-                return None;
+                return;
             }
             let child_score = child.explore_children_recur(
                 bot_player,
@@ -109,21 +103,16 @@ impl<G: Game + Send + Sync> GameNode<G> {
                 now_playing.other(),
                 real_plays,
                 check_children,
-                worst_child_score.clone(),
             );
-            let worst_sibling_score: <G as Game>::Score = *worst_sibling_score.lock().unwrap();
-            println!(
-                "maximize: {maximize},  child: {child_score} worst sibling: {worst_sibling_score}"
-            );
+            let mut worst_child_score = worst_child_score.lock().unwrap();
+            // println!("maximize: {maximize},  child: {child_score} worst child: {worst_child_score}");
 
-            // todo: problem here: maximize: false,  child: 0 worst sibling: -2147483648
-            if maximize && child_score > worst_sibling_score // we found better than the worst sibling, but the node above will choose the worst so we are basically useless
-                || !maximize && child_score < worst_sibling_score
+            if (maximize && child_score > *worst_child_score) // we found better than the child sibling, but the node above will choose the worst so we are basically useless
+                || (!maximize && child_score < *worst_child_score)
             {
                 // stop.store(true, Ordering::Relaxed);
-                *worst_child_score.lock().unwrap() = child_score;
+                *worst_child_score = child_score;
             }
-            Some(child_score)
         };
 
         //let spaces = "| ".repeat(self.depth() as usize);
@@ -133,33 +122,13 @@ impl<G: Game + Send + Sync> GameNode<G> {
         if self.depth().overflowing_sub(real_plays).0 == Self::FORK_DEPTH && false {
             // parallelize
             print!("F"); // should print 49 F (7^(FORK_DEPTH-1) = 7^2)
-            let weights = self
-                .children
-                .par_iter_mut()
-                .filter_map(|(_, child)| maybe_explore_children(child));
-            if maximize {
-                let max = weights.max().unwrap();
-                self.set_weight(Some(max));
-                max
-            } else {
-                let min = weights.min().unwrap();
-                self.set_weight(Some(min));
-                min
-            }
+            self.children.par_iter_mut().for_each(|(_, child)| {
+                maybe_explore_children(child);
+            });
+            let weight = (*worst_child_score.lock().unwrap()).into();
+            self.set_weight(weight);
+            weight.unwrap()
         } else {
-            /*let weights = self
-                .children
-                .iter_mut()
-                .filter_map(|(_, child)| maybe_explore_children(child));
-            if maximize {
-                let max = weights.max().unwrap();
-                self.set_weight(Some(max));
-                max
-            } else {
-                let min = weights.min().unwrap();
-                self.set_weight(Some(min));
-                min
-            }*/
             self.children.iter_mut().for_each(|(_, child)| {
                 maybe_explore_children(child);
             });

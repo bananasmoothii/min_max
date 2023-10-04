@@ -119,7 +119,7 @@ impl<G: Game + Send + Sync> GameNode<G> {
         //println!("{}({})Exploring {} children of depth {} (actual: {})...", spaces, self.id(), self.children.len(), self.depth(), self.depth().overflowing_sub(real_plays).0);
 
         //println!("({} - {real_plays} = {} )", self.depth(), self.depth().overflowing_sub(real_plays).0);
-        if self.depth().overflowing_sub(real_plays).0 == Self::FORK_DEPTH && false {
+        if self.depth().overflowing_sub(real_plays).0 == Self::FORK_DEPTH {
             // parallelize
             print!("F"); // should print 49 F (7^(FORK_DEPTH-1) = 7^2)
             self.children.par_iter_mut().for_each(|(_, child)| {

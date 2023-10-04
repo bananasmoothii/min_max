@@ -11,7 +11,7 @@ mod min_max;
 mod scalar;
 
 fn main() {
-    let max_depth = 8;
+    let max_depth = 7;
 
     let mut times: Vec<u128> = Vec::new();
 
@@ -34,7 +34,7 @@ fn main() {
         if current_player == bot_player {
             let start = std::time::Instant::now();
             game_tree.explore_children(bot_player, max_depth, game_tree.game.plays() as u32);
-            println!("Tree:\n {}", game_tree.debug(2));
+            println!("Tree:\n {}", game_tree.debug(3));
             println!("Into best child...");
             game_tree = game_tree.into_best_child();
             let time = start.elapsed().as_millis();

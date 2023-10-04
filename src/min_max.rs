@@ -34,9 +34,11 @@ impl<G: Game + Send + Sync> GameNode<G> {
         // self.complete_weights(bot_player);
     }
 
-    const FORK_DEPTH: u32 = 3;
+    const FORK_DEPTH: u32 = 2;
 
     const USE_GAME_SCORE: bool = false;
+
+    const MULTI_THREADING: bool = true;
 
     /// Explore children recursively
     ///
@@ -119,7 +121,7 @@ impl<G: Game + Send + Sync> GameNode<G> {
         //println!("{}({})Exploring {} children of depth {} (actual: {})...", spaces, self.id(), self.children.len(), self.depth(), self.depth().overflowing_sub(real_plays).0);
 
         //println!("({} - {real_plays} = {} )", self.depth(), self.depth().overflowing_sub(real_plays).0);
-        if self.depth().overflowing_sub(real_plays).0 == Self::FORK_DEPTH {
+        if self.depth().overflowing_sub(real_plays).0 == Self::FORK_DEPTH && Self::MULTI_THREADING {
             // parallelize
             print!("F"); // should print 49 F (7^(FORK_DEPTH-1) = 7^2)
             self.children.par_iter_mut().for_each(|(_, child)| {
@@ -233,7 +235,22 @@ impl<G: Game + Send + Sync> GameNode<G> {
     }
 
     pub fn into_best_child(self) -> Self {
-        //let target_weight = self.weight().unwrap();
+        /*
+        let target_weight = self.weight().unwrap();
+        let mut best = G::Score::MIN();
+        let mut best_child = None;
+        for child in self.children {
+            let child_weight = child.1.weight().unwrap();
+            if child_weight == target_weight {
+                return child.1;
+            }
+            if child_weight > best {
+                best = child_weight;
+                best_child = Some(child.1);
+            }
+        }
+        best_child.unwrap()
+        */
         self.children // parallelization here slows downs the program a lot
             .into_iter()
             .max_by_key(|(_, child)| child.weight())

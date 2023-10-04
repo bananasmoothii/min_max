@@ -1,6 +1,13 @@
 #[cfg(test)]
-mod iterators_test {
+mod p4_tests {
+    use std::num::NonZeroU8;
+
+    use strum::IntoEnumIterator;
+
+    use crate::game::power4::iteration::P4IteratorType;
     use crate::game::power4::Power4;
+    use crate::game::Game;
+    use crate::min_max::node::GameNode;
 
     #[test]
     fn lines_passing_at() {
@@ -15,5 +22,82 @@ mod iterators_test {
                 .collect::<Vec<_>>(),
             vec![(0, 2), (3, 0), (1, 0), (0, 5)]
         );
+        let lines = power4
+            .lines_passing_at_longer_4((3, 4))
+            .iter()
+            .map(|iter| iter.iterator_type)
+            .collect::<Vec<_>>();
+        for iterator_type in P4IteratorType::iter() {
+            assert!(
+                lines.contains(&iterator_type),
+                "Iterator type {:?} not found",
+                iterator_type
+            );
+        }
+    }
+
+    #[test]
+    fn get_winner() {
+        let mut power4 = Power4::new();
+        let p1 = NonZeroU8::new(1).unwrap();
+        let p2 = NonZeroU8::new(2).unwrap();
+
+        for _ in 0..2 {
+            for column in 0..7 {
+                power4.play(p1, column).unwrap();
+            }
+        }
+        power4.play(p1, 1).unwrap();
+        power4.play(p1, 2).unwrap();
+        power4.play(p1, 3).unwrap();
+        power4.play(p1, 2).unwrap();
+        power4.play(p1, 3).unwrap();
+        power4.play(p1, 3).unwrap();
+
+        power4.play(p2, 0).unwrap();
+        power4.play(p2, 1).unwrap();
+        power4.play(p2, 2).unwrap();
+        power4.play(p2, 3).unwrap();
+
+        power4.print();
+        println!();
+
+        assert_eq!(power4.get_winner(), Some(p1));
+    }
+
+    #[test]
+    fn min_max_should_not_help_winning() {
+        let mut power4 = Power4::new();
+        let p1 = NonZeroU8::new(1).unwrap();
+        let p2 = NonZeroU8::new(2).unwrap();
+
+        power4.play(p2, 3).unwrap();
+        power4.play(p2, 4).unwrap();
+
+        for _ in 0..3 {
+            power4.play(p2, 5).unwrap();
+        }
+
+        power4.play(p1, 2).unwrap();
+        power4.play(p1, 3).unwrap();
+        power4.play(p1, 5).unwrap();
+        power4.play(p1, 6).unwrap();
+
+        power4.print();
+        // here we do not want to play 4, as it would make us loose
+
+        println!();
+        let mut game_tree = GameNode::new_root(power4.clone(), p2, 0);
+        game_tree.explore_children(p2, 2, 0);
+        let wrong_chosen_node = game_tree.children().get(&4usize).unwrap();
+        assert_ne!(wrong_chosen_node.weight().unwrap(), 0);
+
+        // TODO: AI played at 0 here:
+        // - - - - - 2 -
+        // - - - - - 2 -
+        // - - 1 - - 2 -
+        // - 1 2 1 1 1 2
+        // 2 1 1 2 2 1 1
+        // 2 2 2 1 1 1 2
     }
 }

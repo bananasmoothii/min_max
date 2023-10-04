@@ -111,7 +111,10 @@ impl Power4 {
         ));
         iterators.push(BoardIterator::new_at(&self, P4IteratorType::Vertical, x, 0));
 
-        if x <= 3 && y <= 3 {
+        let x_from_left = 6 - x;
+        let y_from_bottom = 5 - y;
+
+        if x + y_from_bottom >= 4 && x_from_left + y >= 4 {
             let subtract = min(x, y);
             // one of x - subtract or y - subtract is 0
             iterators.push(BoardIterator::new_at(
@@ -121,8 +124,8 @@ impl Power4 {
                 y - subtract,
             ));
         }
-        let y_from_bottom = 5 - y;
-        if x <= 3 && y_from_bottom <= 3 {
+
+        if x + y >= 4 && x_from_left + y_from_bottom >= 4 {
             let subtract = min(x, y_from_bottom);
             iterators.push(BoardIterator::new_at(
                 &self,

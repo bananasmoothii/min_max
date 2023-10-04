@@ -87,7 +87,7 @@ impl<G: Game + Send + Sync> GameNode<G> {
             G::Score::MAX()
         } else {
             G::Score::MIN()
-        })); // TODO: seems like sometimes this is not changed
+        }));
 
         let stop = AtomicBool::new(false);
 

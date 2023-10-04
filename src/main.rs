@@ -11,7 +11,7 @@ mod min_max;
 mod scalar;
 
 fn main() {
-    let max_depth = 10;
+    let max_depth = 2;
 
     let mut times: Vec<u128> = Vec::new();
 

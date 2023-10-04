@@ -66,6 +66,7 @@ impl<G: Game + Send + Sync> GameNode<G> {
         assert!(self.depth() >= real_plays, "Negative exploration");
 
         let do_checks = checks || self.children.is_empty();
+
         if self.check_max_depth(bot_player, max_depth, real_plays)
             || (do_checks && (self.check_winner(bot_player) || self.check_draw()))
         {
@@ -86,12 +87,14 @@ impl<G: Game + Send + Sync> GameNode<G> {
         }
 
         let maximize = now_playing == bot_player;
+
         let worst_child_score = Arc::new(Mutex::new(if !maximize {
             // inverting for children
             G::Score::MAX()
         } else {
             G::Score::MIN()
-        }));
+        })); // TODO: seems like sometimes this is not changed
+
         let stop = AtomicBool::new(false);
 
         let check_children = self.fill_children(now_playing);
@@ -108,12 +111,16 @@ impl<G: Game + Send + Sync> GameNode<G> {
                 check_children,
                 worst_child_score.clone(),
             );
-            let worst_sibling_score = worst_sibling_score.lock().unwrap();
+            let worst_sibling_score: <G as Game>::Score = *worst_sibling_score.lock().unwrap();
+            println!(
+                "maximize: {maximize},  child: {child_score} worst sibling: {worst_sibling_score}"
+            );
 
-            if maximize && child_score > *worst_sibling_score // we found better than the worst sibling, but the node above will choose the worst so we are basically useless
-                || !maximize && child_score < *worst_sibling_score
+            // todo: problem here: maximize: false,  child: 0 worst sibling: -2147483648
+            if maximize && child_score > worst_sibling_score // we found better than the worst sibling, but the node above will choose the worst so we are basically useless
+                || !maximize && child_score < worst_sibling_score
             {
-                stop.store(true, Ordering::Relaxed);
+                // stop.store(true, Ordering::Relaxed);
                 *worst_child_score.lock().unwrap() = child_score;
             }
             Some(child_score)
@@ -123,7 +130,7 @@ impl<G: Game + Send + Sync> GameNode<G> {
         //println!("{}({})Exploring {} children of depth {} (actual: {})...", spaces, self.id(), self.children.len(), self.depth(), self.depth().overflowing_sub(real_plays).0);
 
         //println!("({} - {real_plays} = {} )", self.depth(), self.depth().overflowing_sub(real_plays).0);
-        if self.depth().overflowing_sub(real_plays).0 == Self::FORK_DEPTH {
+        if self.depth().overflowing_sub(real_plays).0 == Self::FORK_DEPTH && false {
             // parallelize
             print!("F"); // should print 49 F (7^(FORK_DEPTH-1) = 7^2)
             let weights = self
@@ -222,8 +229,8 @@ impl<G: Game + Send + Sync> GameNode<G> {
         real_plays: u32,
     ) -> bool {
         if self.depth() >= max_depth + real_plays {
+            // I know this is a constant, but this allows me to change it easily
             if Self::USE_GAME_SCORE {
-                // I know this is a constant, but this allows me to change it easily
                 let score = self.game.get_score(bot_player); // computing score here
                 if score == G::Score::MAX() {
                     self.game_state = WonBy(bot_player);
@@ -254,37 +261,6 @@ impl<G: Game + Send + Sync> GameNode<G> {
             return true;
         }
         false
-    }
-
-    fn complete_weights(&mut self, bot_player: G::Player) {
-        if self.children().is_empty() {
-            if self.weight().is_none() {
-                panic!("there should be a weight for a leaf node");
-            }
-            return;
-        }
-
-        self.children
-            .iter_mut()
-            .for_each(|(_, child)| child.complete_weights(bot_player));
-
-        let children_weights = self
-            .children()
-            .values()
-            .map(|child| child.weight().unwrap()); // the tree should be completed, so no None should be found
-
-        let now_playing = match self.game_state {
-            PlayersTurn(now_playing) => now_playing,
-            _ => panic!("Cannot complete weights of a node that is not starting or played by a player. State was: {}", self.game_state),
-        };
-
-        self.set_weight(Some(if now_playing == bot_player {
-            // currently bot's turn and he will play the best move for him
-            children_weights.max().unwrap()
-        } else {
-            // currently opponent's turn and he will play the best move for him, so the worst for us
-            children_weights.min().unwrap()
-        }))
     }
 
     pub fn into_best_child(self) -> Self {

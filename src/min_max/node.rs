@@ -7,7 +7,6 @@ use crate::game::Game;
 
 #[derive(Clone)]
 pub struct GameNode<G: Game> {
-    id: u32,
     depth: u32,
     weight: Option<G::Score>,
     pub(super) children: HashMap<G::InputCoordinate, Self>,
@@ -18,7 +17,6 @@ pub struct GameNode<G: Game> {
 impl<G: Game> GameNode<G> {
     pub fn new(game: G, depth: u32, weight: Option<G::Score>, game_state: GameState<G>) -> Self {
         GameNode {
-            id: rand::random(),
             depth,
             weight,
             children: HashMap::new(),
@@ -42,18 +40,8 @@ impl<G: Game> GameNode<G> {
         }
     }
 
-    /**
-     * Same as try_into_child, but if the child does not exist, you don't get the ownership of self back
-     */
-    pub fn into_child(mut self, play: G::InputCoordinate) -> Option<Self> {
-        self.children.remove(&play)
-    }
-
     // Getters
 
-    pub fn id(&self) -> u32 {
-        self.id
-    }
     pub fn depth(&self) -> u32 {
         self.depth
     }
@@ -63,21 +51,11 @@ impl<G: Game> GameNode<G> {
     pub fn children(&self) -> &HashMap<G::InputCoordinate, Self> {
         &self.children
     }
-    pub fn children_mut(&mut self) -> &mut HashMap<G::InputCoordinate, Self> {
-        &mut self.children
-    }
 
     // Setters
 
     pub fn set_weight(&mut self, weight: Option<G::Score>) {
         self.weight = weight;
-    }
-    pub fn set_children(&mut self, children: HashMap<G::InputCoordinate, Self>) {
-        self.children = children;
-    }
-
-    pub fn print_root(&self) {
-        self.game.print();
     }
 
     pub fn debug(&self, max_depth: u32) -> String {

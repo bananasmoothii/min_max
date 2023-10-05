@@ -91,13 +91,55 @@ mod p4_tests {
         game_tree.explore_children(p2, 2, 0);
         let wrong_chosen_node = game_tree.children().get(&4usize).unwrap();
         assert_ne!(wrong_chosen_node.weight().unwrap(), 0);
+    }
 
-        // TODO: AI played at 0 here:
+    #[test]
+    fn get_winner_2() {
+        let mut power4 = Power4::new();
+        let p1 = NonZeroU8::new(1).unwrap();
+        let p2 = NonZeroU8::new(2).unwrap();
+
+        // AI played at 0 here:
         // - - - - - 2 -
         // - - - - - 2 -
         // - - 1 - - 2 -
         // - 1 2 1 1 1 2
         // 2 1 1 2 2 1 1
         // 2 2 2 1 1 1 2
+
+        let plays = [
+            (p2, 0),
+            (p2, 1),
+            (p2, 2),
+            (p1, 3),
+            (p2, 0),
+            (p1, 1),
+            (p1, 2),
+            (p2, 3),
+            (p1, 1),
+            (p2, 2),
+            (p1, 2),
+            (p1, 3),
+            (p2, 0),
+            (p1, 0),
+        ];
+
+        for (player, column) in plays.iter() {
+            power4.play(*player, *column).unwrap();
+        }
+        power4.print();
+
+        assert_eq!(power4.last_played_coords.unwrap(), (2, 0));
+        assert_eq!(power4.lines_passing_at_longer_4((2, 0)).len(), 3);
+
+        assert_eq!(power4.get_winner(), Some(p1));
+
+        power4.print();
+        println!();
+        // let mut game_tree = GameNode::new_root(power4.clone(), p2, 0);
+        // game_tree.explore_children(p2, 2, 0);
+        // println!("Tree:\n {}", game_tree.debug(3));
+        // let wrong_chosen_node = game_tree.children().get(&0usize).unwrap();
+        // assert_ne!(wrong_chosen_node.weight().unwrap(), 0);
     }
 }

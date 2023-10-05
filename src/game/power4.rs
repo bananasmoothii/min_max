@@ -2,10 +2,13 @@ use std::cmp::min;
 use std::num::NonZeroU8;
 
 use console::Style;
+use strum::IntoEnumIterator;
 
+use crate::game::power4::count_direction::CountDirection;
 use crate::game::power4::iteration::{BoardIterator, P4IteratorType};
 use crate::game::Game;
 
+mod count_direction;
 mod iteration;
 mod tests;
 
@@ -190,6 +193,33 @@ impl Power4 {
         }
         None
     }
+
+    fn count_in_direction(
+        &self,
+        start: <Power4 as Game>::Coordinate,
+        direction: CountDirection,
+        max: u8,
+    ) -> u8 {
+        let player_to_count = self.get(start);
+        if player_to_count.is_none() {
+            return 0;
+        }
+        let mut count: u8 = 0;
+        let player_to_count = player_to_count.unwrap();
+        let mut coords = direction.add_to(start);
+        while let Some(player) = coords.map(|coords| self.get(coords)).flatten() {
+            if player == player_to_count {
+                count += 1;
+                if count == max {
+                    return count;
+                }
+            } else {
+                break;
+            }
+            coords = direction.add_to(coords.unwrap());
+        }
+        count
+    }
 }
 
 impl Game for Power4 {
@@ -328,32 +358,55 @@ impl Game for Power4 {
         }
     }
 
+    /*
+        fn get_winner(&self) -> Option<Self::Player> {
+            if self.last_played_coords.is_none() {
+                return None;
+            }
+            let last_coords = self.last_played_coords.unwrap();
+            for mut line_iterator in self.lines_passing_at_longer_4(last_coords) {
+                let mut strike_player = NonZeroU8::new(1u8).unwrap();
+                let mut strike: u8 = 0;
+                let mut cell_option = line_iterator.get_with_offset(0);
+                while let Some(cell) = cell_option {
+                    if let Some(cell_player) = cell {
+                        if strike_player == cell_player {
+                            strike += 1;
+
+                            if strike == 4 {
+                                return Some(cell_player);
+                            }
+                        } else {
+                            strike_player = cell_player;
+
+                            strike = 1;
+                        }
+                    } else {
+                        strike = 0;
+                    }
+                    cell_option = line_iterator.next();
+                }
+            }
+            None
+        }
+    */
+
     fn get_winner(&self) -> Option<Self::Player> {
         if self.last_played_coords.is_none() {
             return None;
         }
         let last_coords = self.last_played_coords.unwrap();
-        for mut line_iterator in self.lines_passing_at_longer_4(last_coords) {
-            let mut strike_player = NonZeroU8::new(1u8).unwrap();
-            let mut strike: u8 = 0;
-            let mut cell_option = line_iterator.get_with_offset(0);
-            while let Some(cell) = cell_option {
-                if let Some(cell_player) = cell {
-                    if strike_player == cell_player {
-                        strike += 1;
-
-                        if strike == 4 {
-                            return Some(cell_player);
-                        }
-                    } else {
-                        strike_player = cell_player;
-
-                        strike = 1;
-                    }
-                } else {
-                    strike = 0;
-                }
-                cell_option = line_iterator.next();
+        let counting_player = *self.get(last_coords).unwrap();
+        for count_direction in CountDirection::iter() {
+            // max is 3 because we don't count the middle/start cell
+            let count = self.count_in_direction(last_coords, count_direction, 3);
+            if count == 3 {
+                return Some(counting_player);
+            }
+            let count_opposite =
+                self.count_in_direction(last_coords, count_direction.opposite(), 3 - count);
+            if count + count_opposite == 3 {
+                return Some(counting_player);
             }
         }
         None

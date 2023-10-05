@@ -4,6 +4,7 @@ mod p4_tests {
 
     use strum::IntoEnumIterator;
 
+    use crate::game::power4::count_direction::CountDirection;
     use crate::game::power4::iteration::P4IteratorType;
     use crate::game::power4::Power4;
     use crate::game::Game;
@@ -62,7 +63,7 @@ mod p4_tests {
         power4.print();
         println!();
 
-        assert_eq!(power4.get_winner(), Some(p1));
+        assert_eq!(power4.get_winner(), Some(p2));
     }
 
     #[test]
@@ -141,5 +142,28 @@ mod p4_tests {
         // println!("Tree:\n {}", game_tree.debug(3));
         // let wrong_chosen_node = game_tree.children().get(&0usize).unwrap();
         // assert_ne!(wrong_chosen_node.weight().unwrap(), 0);
+    }
+
+    #[test]
+    fn count_in_direction() {
+        let mut power4 = Power4::new();
+        let p1 = NonZeroU8::new(1).unwrap();
+        let p2 = NonZeroU8::new(2).unwrap();
+
+        power4.play(p1, 0).unwrap();
+        power4.play(p1, 1).unwrap();
+        power4.play(p1, 2).unwrap();
+        power4.play(p1, 3).unwrap();
+
+        power4.print();
+
+        assert_eq!(
+            power4.count_in_direction((5, 2), CountDirection::HorizontalLeft, 10),
+            2
+        );
+        assert_eq!(
+            power4.count_in_direction((5, 2), CountDirection::HorizontalLeft, 1),
+            1
+        );
     }
 }

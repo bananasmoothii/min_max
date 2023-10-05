@@ -1,4 +1,3 @@
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use rayon::iter::*;
@@ -28,6 +27,11 @@ impl<G: Game + Send + Sync> GameNode<G> {
             now_playing,
             real_plays,
             self.children.is_empty(),
+            Arc::new(Mutex::new(if now_playing == bot_player {
+                G::Score::MAX()
+            } else {
+                G::Score::MIN()
+            })),
         );
 
         // println!("Completing weights...");
@@ -58,6 +62,7 @@ impl<G: Game + Send + Sync> GameNode<G> {
         now_playing: G::Player,
         real_plays: u32,
         checks: bool,
+        worst_sibling_score: Arc<Mutex<G::Score>>,
     ) -> G::Score {
         assert!(self.depth() >= real_plays, "Negative exploration");
 
@@ -91,29 +96,36 @@ impl<G: Game + Send + Sync> GameNode<G> {
             G::Score::MIN()
         }));
 
-        let stop = AtomicBool::new(false);
-
         let check_children = self.fill_children(now_playing);
 
         let maybe_explore_children = |child: &mut Self| {
-            if stop.load(Ordering::Relaxed) {
-                return;
-            }
             let child_score = child.explore_children_recur(
                 bot_player,
                 max_depth,
                 now_playing.other(),
                 real_plays,
                 check_children,
+                worst_child_score.clone(),
             );
             let mut worst_child_score = worst_child_score.lock().unwrap();
             // println!("maximize: {maximize},  child: {child_score} worst child: {worst_child_score}");
 
-            if (maximize && child_score > *worst_child_score) // we found better than the child sibling, but the node above will choose the worst so we are basically useless
+            if (maximize && child_score > *worst_child_score)
                 || (!maximize && child_score < *worst_child_score)
             {
-                // stop.store(true, Ordering::Relaxed);
                 *worst_child_score = child_score;
+            }
+            let parent_maximize = !maximize;
+            let mut worst_sibling_score = worst_sibling_score.lock().unwrap();
+
+            // if the parent will not choose us
+            if (parent_maximize && *worst_child_score < *worst_sibling_score)
+                || (!parent_maximize && *worst_child_score > *worst_sibling_score)
+            {
+                None // abort checking childs
+            } else {
+                // parent may choose us
+                Some(()) // continue checking children
             }
         };
 
@@ -124,16 +136,16 @@ impl<G: Game + Send + Sync> GameNode<G> {
         if self.depth().overflowing_sub(real_plays).0 == Self::FORK_DEPTH && Self::MULTI_THREADING {
             // parallelize
             print!("F"); // should print 49 F (7^(FORK_DEPTH-1) = 7^2)
-            self.children.par_iter_mut().for_each(|(_, child)| {
-                maybe_explore_children(child);
-            });
+            self.children
+                .par_iter_mut()
+                .try_for_each(|(_, child)| maybe_explore_children(child));
             let weight = (*worst_child_score.lock().unwrap()).into();
             self.set_weight(weight);
             weight.unwrap()
         } else {
-            self.children.iter_mut().for_each(|(_, child)| {
-                maybe_explore_children(child);
-            });
+            self.children
+                .iter_mut()
+                .try_for_each(|(_, child)| maybe_explore_children(child));
             let weight = (*worst_child_score.lock().unwrap()).into();
             self.set_weight(weight);
             weight.unwrap()

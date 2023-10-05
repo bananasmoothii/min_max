@@ -11,7 +11,7 @@ mod min_max;
 mod scalar;
 
 fn main() {
-    let max_depth = 7;
+    let max_depth = 8;
 
     let mut times: Vec<u128> = Vec::new();
 
@@ -40,6 +40,12 @@ fn main() {
             let time = start.elapsed().as_millis();
             times.push(time);
             println!("Done in {}ms", time);
+            let weight_opt = game_tree.weight();
+            if weight_opt.is_some_and(|it| it > i32::MAX - 1000) {
+                println!("You're dead, sorry.");
+            } else if weight_opt.is_some_and(|it| it < i32::MIN + 1000) {
+                println!("Ok I'm basically dead...");
+            }
         } else {
             let column = get_user_input();
             let had_children = !game_tree.children().is_empty();

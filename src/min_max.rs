@@ -183,7 +183,7 @@ impl<G: Game + Send + Sync> GameNode<G> {
                         ),
                     )
                 })
-                .collect();
+                .collect(); // todo: a lot of memory is used here
             true
         } else {
             self.regenerate_children_games();

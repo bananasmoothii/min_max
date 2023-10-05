@@ -11,7 +11,7 @@ mod min_max;
 mod scalar;
 
 fn main() {
-    let max_depth = 8;
+    let max_depth = 9;
 
     let mut times: Vec<u128> = Vec::new();
 
@@ -27,13 +27,17 @@ fn main() {
     let mut p1_score: i32 = 0;
     loop {
         println!();
-        game_tree.game.print();
+        game_tree.expect_game().print();
         println!("Scores: {p1_score} for player 1");
         println!();
         println!("Player {current_player}'s turn");
         if current_player == bot_player {
             let start = std::time::Instant::now();
-            game_tree.explore_children(bot_player, max_depth, game_tree.game.plays() as u32);
+            game_tree.explore_children(
+                bot_player,
+                max_depth,
+                game_tree.expect_game().plays() as u32,
+            );
             println!("Tree:\n {}", game_tree.debug(3));
             println!("Into best child...");
             game_tree = game_tree.into_best_child();
@@ -46,38 +50,48 @@ fn main() {
             } else if weight_opt.is_some_and(|it| it < i32::MIN + 1000) {
                 println!("Ok I'm basically dead...");
             }
+            debug_assert!(game_tree.game().is_some());
         } else {
             let column = get_user_input();
             let had_children = !game_tree.children().is_empty();
             let (is_known_move, mut new_game_tree) = game_tree.try_into_child(column - 1);
             if is_known_move {
                 game_tree = new_game_tree;
+                debug_assert!(game_tree.game().is_some());
             } else {
                 // Here, new_game_tree is actually game_tree, the ownership was given back to us
                 if had_children {
                     println!("Unexpected move... Maybe you are a pure genius, or a pure idiot.");
                 }
-                let result = new_game_tree.game.play(current_player, column - 1);
+                let result = new_game_tree
+                    .expect_game_mut()
+                    .play(current_player, column - 1);
                 if let Err(e) = result {
                     println!("{}", e);
                     game_tree = new_game_tree;
                     continue;
                 }
                 let depth = new_game_tree.depth() + 1;
-                game_tree = GameNode::new_root(new_game_tree.game, current_player.other(), depth);
+                game_tree = GameNode::new_root(
+                    new_game_tree.into_expect_game(),
+                    current_player.other(),
+                    depth,
+                );
             }
         }
 
-        p1_score = game_tree.game.get_score(p1);
+        let game = game_tree.expect_game();
+
+        p1_score = game.get_score(p1);
 
         if p1_score == <Power4 as Game>::Score::MAX || p1_score == <Power4 as Game>::Score::MIN {
             println!("Player {current_player} won!\n");
-            game_tree.game.print();
+            game.print();
             break;
         }
-        if game_tree.game.is_full() {
+        if game.is_full() {
             println!("Draw!\n");
-            game_tree.game.print();
+            game.print();
             break;
         }
         current_player = current_player.other();

@@ -10,13 +10,18 @@ pub struct GameNode<G: Game> {
     depth: u32,
     weight: Option<G::Score>,
     pub(super) children: HashMap<G::InputCoordinate, Self>,
-    pub game: G,
+    pub(super) game: Option<G>,
     pub game_state: GameState<G>,
 }
 
 impl<G: Game> GameNode<G> {
-    pub fn new(game: G, depth: u32, weight: Option<G::Score>, game_state: GameState<G>) -> Self {
-        GameNode {
+    pub fn new(
+        game: Option<G>,
+        depth: u32,
+        weight: Option<G::Score>,
+        game_state: GameState<G>,
+    ) -> Self {
+        Self {
             depth,
             weight,
             children: HashMap::new(),
@@ -26,14 +31,31 @@ impl<G: Game> GameNode<G> {
     }
 
     pub fn new_root(game: G, starting_player: G::Player, depth: u32) -> Self {
-        GameNode::new(game, depth, None, PlayersTurn(starting_player))
+        GameNode::new(Some(game), depth, None, PlayersTurn(starting_player, None))
+    }
+
+    pub fn fill_play(&mut self, mut previous_game: G) {
+        if self.game.is_some() {
+            return;
+        }
+        let (last_player, last_play) = self.game_state.get_last_play();
+        previous_game.play(last_player, last_play.unwrap()).unwrap();
+        self.game = Some(previous_game);
+    }
+
+    pub fn regenerate_children_games(&mut self) {
+        let game = self.game.as_ref().unwrap();
+        for (_, child) in &mut self.children {
+            child.fill_play(game.clone());
+        }
     }
 
     /**
      * Returns (false, self) if the child does not exist, else (true, child)
      */
     pub fn try_into_child(mut self, play: G::InputCoordinate) -> (bool, Self) {
-        if let Some(child) = self.children.remove(&play) {
+        if let Some(mut child) = self.children.remove(&play) {
+            child.fill_play(self.game.unwrap());
             (true, child)
         } else {
             (false, self)
@@ -50,6 +72,22 @@ impl<G: Game> GameNode<G> {
     }
     pub fn children(&self) -> &HashMap<G::InputCoordinate, Self> {
         &self.children
+    }
+
+    pub fn game(&self) -> Option<&G> {
+        self.game.as_ref()
+    }
+
+    pub fn expect_game(&self) -> &G {
+        self.game.as_ref().expect("GameNode has no game")
+    }
+
+    pub fn expect_game_mut(&mut self) -> &mut G {
+        self.game.as_mut().expect("GameNode has no game")
+    }
+
+    pub fn into_expect_game(self) -> G {
+        self.game.expect("GameNode has no game")
     }
 
     // Setters

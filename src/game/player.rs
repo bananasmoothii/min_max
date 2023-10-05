@@ -1,5 +1,5 @@
 use std::fmt::{Debug, Display};
-use std::num::{NonZeroU8};
+use std::num::NonZeroU8;
 
 pub trait Player: PartialEq + Copy + Debug + Display + Send + Sync {
     fn other(&self) -> Self;

@@ -1,5 +1,5 @@
 use std::io;
-use std::num::NonZeroU8;
+use std::num::{NonZeroU8, NonZeroUsize};
 
 use crate::bot::Bot;
 use crate::game::connect4::Power4;
@@ -12,7 +12,7 @@ mod min_max;
 mod scalar;
 
 fn main() {
-    let max_depth = 10;
+    let max_depth = 9;
     let bot_vs_bot = true;
 
     let p1 = NonZeroU8::new(1).unwrap();
@@ -72,8 +72,7 @@ fn main() {
 
 fn player_play(bot: &mut Bot<Power4>) -> Result<(), &str> {
     let column = get_user_input();
-    let play = column - 1;
-    bot.other_played(play)
+    bot.other_played(NonZeroUsize::new(column).unwrap())
 }
 
 fn ask_start() -> bool {

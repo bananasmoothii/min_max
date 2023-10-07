@@ -1,5 +1,5 @@
 use std::cmp::min;
-use std::num::NonZeroU8;
+use std::num::{NonZeroU8, NonZeroUsize};
 
 use console::Style;
 
@@ -142,6 +142,10 @@ impl Power4 {
         self.board[row as usize][column as usize]
     }
 
+    pub fn play_usize(&mut self, player: NonZeroU8, column: usize) -> Result<(), &str> {
+        self.play(player, NonZeroUsize::new(column).unwrap())
+    }
+
     pub fn get_winner_coords(
         &self,
     ) -> Option<[<Self as Game>::Coordinate; Self::CONNECT as usize]> {
@@ -222,7 +226,7 @@ impl Game for Power4 {
     /// (row, column) or (y, x)
     type Coordinate = (usize, usize);
 
-    type InputCoordinate = usize;
+    type InputCoordinate = NonZeroUsize;
 
     /**
      * The player is represented by 1 or 2
@@ -246,7 +250,8 @@ impl Game for Power4 {
         self.board[row][column].as_ref()
     }
 
-    fn play<'a>(&mut self, player: NonZeroU8, column: usize) -> Result<(), &'a str> {
+    fn play<'a>(&mut self, player: NonZeroU8, column: NonZeroUsize) -> Result<(), &'a str> {
+        let column = column.get() - 1;
         if column >= 7 {
             return Err("Column out of bounds");
         }
@@ -396,10 +401,11 @@ impl Game for Power4 {
         true
     }
 
-    fn possible_plays(&self) -> Vec<usize> {
-        (0..=6)
-            .filter(|&column| self.get((0, column)).is_none())
-            .collect::<Vec<usize>>()
+    fn possible_plays(&self) -> Vec<NonZeroUsize> {
+        (1..=7usize)
+            .filter(|&column| self.get((0, column - 1)).is_none())
+            .map(|column| NonZeroUsize::new(column).unwrap())
+            .collect::<Vec<NonZeroUsize>>()
     }
 
     fn print(&self) {
@@ -444,6 +450,7 @@ impl Game for Power4 {
     }
 
     fn last_play(&self) -> Option<Self::InputCoordinate> {
-        self.last_played_coords.map(|(x, _)| x)
+        self.last_played_coords
+            .map(|(x, _)| NonZeroUsize::new(x).unwrap())
     }
 }

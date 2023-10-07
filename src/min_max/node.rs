@@ -7,6 +7,7 @@ use crate::game::Game;
 
 #[derive(Clone)]
 pub struct GameNode<G: Game> {
+    // todo: reduce size of this struct
     depth: u32,
     weight: Option<G::Score>,
     pub(super) children: HashMap<G::InputCoordinate, Self>,

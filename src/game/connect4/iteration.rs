@@ -1,6 +1,6 @@
 use strum_macros::EnumIter;
 
-use crate::game::power4::Power4;
+use crate::game::connect4::Power4;
 use crate::game::Game;
 
 #[derive(EnumIter, Debug, Copy, Clone, PartialEq)]

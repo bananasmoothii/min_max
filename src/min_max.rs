@@ -19,7 +19,7 @@ impl<G: Game + Send + Sync> GameNode<G> {
             ),
         };
 
-        println!("Exploring children...");
+        println!("Exploring possibilities...");
 
         self.explore_children_recur(
             bot_player,
@@ -138,7 +138,6 @@ impl<G: Game + Send + Sync> GameNode<G> {
             && Self::MULTI_THREADING
         {
             // parallelize
-            print!("F"); // should print 49 F (7^(FORK_DEPTH-1) = 7^2)
             self.children
                 .par_iter_mut()
                 .try_for_each(|(_, child)| maybe_explore_children(child));

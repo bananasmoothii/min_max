@@ -12,10 +12,6 @@ pub enum GameState<G: Game> {
 
 impl<G: Game> Display for GameState<G> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let format = |input: &Option<<G as Game>::InputCoordinate>| {
-            input.map(|p| p.to_string()).unwrap_or("-".to_string())
-        };
-
         match self {
             GameState::PlayersTurn(player, input) => write!(
                 f,
@@ -39,11 +35,6 @@ impl<G: Game> GameState<G> {
             GameState::Draw(last_player, input) => (*last_player, Some(*input)),
             GameState::WonBy(player, input) => (*player, Some(*input)),
         }
-    }
-
-    /// Just a shortcut for GameState::PlayersTurn
-    pub fn players_turn(player: G::Player, last_play: G::InputCoordinate) -> GameState<G> {
-        GameState::PlayersTurn(player, Some(last_play))
     }
 
     pub fn to_draw(&self) -> GameState<G> {

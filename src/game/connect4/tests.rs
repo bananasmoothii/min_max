@@ -4,9 +4,9 @@ mod p4_tests {
 
     use strum::IntoEnumIterator;
 
-    use crate::game::power4::count_direction::CountDirection;
-    use crate::game::power4::iteration::P4IteratorType;
-    use crate::game::power4::Power4;
+    use crate::game::connect4::count_direction::CountDirection;
+    use crate::game::connect4::iteration::P4IteratorType;
+    use crate::game::connect4::Power4;
     use crate::game::Game;
     use crate::min_max::node::GameNode;
 
@@ -137,7 +137,7 @@ mod p4_tests {
 
         power4.print();
         println!();
-        // let mut game_tree = GameNode::new_root(power4.clone(), p2, 0);
+        // let mut game_tree = GameNode::new_root(connect4.clone(), p2, 0);
         // game_tree.explore_children(p2, 2, 0);
         // println!("Tree:\n {}", game_tree.debug(3));
         // let wrong_chosen_node = game_tree.children().get(&0usize).unwrap();

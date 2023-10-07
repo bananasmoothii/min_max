@@ -1,13 +1,14 @@
-pub mod player;
-pub(crate) mod state;
-pub mod power4;
-
-use std::fmt::{Display};
+use std::fmt::Display;
 use std::hash::Hash;
+
 use crate::game::player::Player;
 use crate::scalar::Scalar;
 
-pub trait Game : Clone + Send {
+pub mod connect4;
+pub mod player;
+pub(crate) mod state;
+
+pub trait Game: Clone + Send {
     type Coordinate;
 
     type InputCoordinate: Copy + Eq + Ord + Hash + Display + Send + Sync;
@@ -18,7 +19,11 @@ pub trait Game : Clone + Send {
 
     fn get(&self, coordinate: Self::Coordinate) -> Option<&Self::Player>;
 
-    fn play<'a>(&mut self, player: Self::Player, coordinate: Self::InputCoordinate) -> Result<(), &'a str>;
+    fn play<'a>(
+        &mut self,
+        player: Self::Player,
+        coordinate: Self::InputCoordinate,
+    ) -> Result<(), &'a str>;
 
     fn get_score(&self, player: Self::Player) -> Self::Score;
 

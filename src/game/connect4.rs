@@ -2,10 +2,9 @@ use std::cmp::min;
 use std::num::NonZeroU8;
 
 use console::Style;
-use strum::IntoEnumIterator;
 
-use crate::game::power4::count_direction::CountDirection;
-use crate::game::power4::iteration::{BoardIterator, P4IteratorType};
+use crate::game::connect4::count_direction::CountDirection;
+use crate::game::connect4::iteration::{BoardIterator, P4IteratorType};
 use crate::game::Game;
 
 mod count_direction;
@@ -397,7 +396,7 @@ impl Game for Power4 {
         }
         let last_coords = self.last_played_coords.unwrap();
         let counting_player = *self.get(last_coords).unwrap();
-        for count_direction in CountDirection::iter() {
+        for count_direction in CountDirection::half_side() {
             // max is 3 because we don't count the middle/start cell
             let count = self.count_in_direction(last_coords, count_direction, 3);
             if count == 3 {

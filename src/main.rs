@@ -1,8 +1,8 @@
 use std::io;
 use std::num::NonZeroU8;
 
+use crate::game::connect4::Power4;
 use crate::game::player::Player;
-use crate::game::power4::Power4;
 use crate::game::Game;
 use crate::min_max::node::GameNode;
 
@@ -11,7 +11,7 @@ mod min_max;
 mod scalar;
 
 fn main() {
-    let max_depth = 5;
+    let max_depth = 8;
 
     let mut times: Vec<u128> = Vec::new();
 
@@ -24,7 +24,7 @@ fn main() {
 
     let mut game_tree: GameNode<Power4> = GameNode::new_root(Power4::new(), current_player, 0);
 
-    let bot_vs_bot = false;
+    let bot_vs_bot = false; // doesn't work properly yet
     let mut game_tree_2 = GameNode::new_root(Power4::new(), current_player.other(), 0);
 
     let mut p1_score: i32 = 0;
@@ -43,11 +43,6 @@ fn main() {
             );
         } else {
             if bot_vs_bot {
-                game_tree_2 = GameNode::new_root(
-                    game_tree.expect_game().clone(),
-                    current_player.other(),
-                    game_tree.depth(),
-                );
                 game_tree_2 = bot_play(max_depth, &mut times, bot_player.other(), game_tree_2);
                 game_tree = GameNode::new_root(
                     game_tree_2.expect_game().clone(),
@@ -57,7 +52,9 @@ fn main() {
             } else {
                 let (cont, tree) = player_play(current_player, game_tree);
                 game_tree = tree;
-                if cont { continue; }
+                if cont {
+                    continue;
+                }
             }
         }
 
@@ -83,7 +80,10 @@ fn main() {
     );
 }
 
-fn player_play(mut current_player: NonZeroU8, mut game_tree: GameNode<Power4>) -> (bool, GameNode<Power4>) {
+fn player_play(
+    current_player: NonZeroU8,
+    mut game_tree: GameNode<Power4>,
+) -> (bool, GameNode<Power4>) {
     let column = get_user_input();
     let had_children = !game_tree.children().is_empty();
     let (is_known_move, mut new_game_tree) = game_tree.try_into_child(column - 1);
@@ -106,16 +106,17 @@ fn player_play(mut current_player: NonZeroU8, mut game_tree: GameNode<Power4>) -
         let depth = new_game_tree.depth() + 1;
         let game = new_game_tree.into_expect_game();
         let next_player = current_player.other();
-        game_tree = GameNode::new_root(
-            game,
-            next_player,
-            depth,
-        );
+        game_tree = GameNode::new_root(game, next_player, depth);
     }
     (false, game_tree)
 }
 
-fn bot_play(max_depth: u32, times: &mut Vec<u128>, bot_player: NonZeroU8, mut game_tree: GameNode<Power4>) -> GameNode<Power4> {
+fn bot_play(
+    max_depth: u32,
+    times: &mut Vec<u128>,
+    bot_player: NonZeroU8,
+    mut game_tree: GameNode<Power4>,
+) -> GameNode<Power4> {
     let start = std::time::Instant::now();
     game_tree.explore_children(
         bot_player,
@@ -123,7 +124,7 @@ fn bot_play(max_depth: u32, times: &mut Vec<u128>, bot_player: NonZeroU8, mut ga
         game_tree.expect_game().plays() as u32,
     );
     //println!("Tree:\n {}", game_tree.debug(3));
-    println!("Into best child...");
+    //println!("Into best child...");
     game_tree = game_tree.into_best_child();
     let time = start.elapsed().as_millis();
     times.push(time);

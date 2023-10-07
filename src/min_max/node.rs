@@ -124,7 +124,7 @@ impl<G: Game> GameNode<G> {
     fn count_depth(&self) -> u32 {
         let mut max_depth = 0;
         for child in self.children.values() {
-            let child_depth = child.count_depth();
+            let child_depth = child.count_depth() + 1;
             if child_depth > max_depth {
                 max_depth = child_depth;
             }

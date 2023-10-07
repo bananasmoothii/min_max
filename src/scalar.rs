@@ -3,7 +3,7 @@ use std::ops::{Add, Sub};
 
 #[allow(non_snake_case)]
 pub trait Scalar:
-    Sized + Add + Sub + PartialEq + Ord + Copy + Clone + Display + Debug + Send + Sync
+    Sized + Add + Sub + PartialEq + Ord + Copy + Clone + Display + Debug + Send + Sync + From<i32>
 {
     fn MIN() -> Self;
     fn MAX() -> Self;

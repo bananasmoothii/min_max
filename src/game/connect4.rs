@@ -19,14 +19,6 @@ pub struct Power4 {
 }
 
 impl Power4 {
-    pub fn new() -> Power4 {
-        Power4 {
-            board: [[None; 7]; 6],
-            plays: 0,
-            last_played_coords: None,
-        }
-    }
-
     /**
      * Returns all iterators for all lines having 4 or more cells
      */
@@ -150,7 +142,9 @@ impl Power4 {
         self.board[row as usize][column as usize]
     }
 
-    pub fn get_winner_coords(&self) -> Option<[<Self as Game>::Coordinate; 4]> {
+    pub fn get_winner_coords(
+        &self,
+    ) -> Option<[<Self as Game>::Coordinate; Self::CONNECT as usize]> {
         if self.last_played_coords.is_none() {
             return None;
         }
@@ -159,8 +153,9 @@ impl Power4 {
             return None;
         }
         let last_coords = self.last_played_coords.unwrap();
+        let connect = Self::CONNECT as usize;
         for mut line_iterator in self.lines_passing_at_longer_4(last_coords) {
-            let mut winner_coords: Vec<(isize, isize)> = Vec::with_capacity(7);
+            let mut winner_coords: Vec<(isize, isize)> = Vec::with_capacity(2 * connect - 1);
             let mut strike_player = NonZeroU8::new(1u8).unwrap();
             let mut strike: u8 = 0;
             let mut cell_option = line_iterator.get_with_offset(0);
@@ -170,11 +165,11 @@ impl Power4 {
                     if strike_player == cell_player {
                         strike += 1;
 
-                        if strike == 4 {
-                            let mut result = [(0usize, 0usize); 4];
+                        if strike == Self::CONNECT {
+                            let mut result = [(0usize, 0usize); Self::CONNECT as usize];
                             let winner_coords_size = winner_coords.len();
-                            for i in 0..4 {
-                                let (y, x) = winner_coords[winner_coords_size - 4 + i];
+                            for i in 0..connect {
+                                let (y, x) = winner_coords[winner_coords_size - connect + i];
                                 result[i] = (y as usize, x as usize);
                             }
                             return Some(result);
@@ -219,6 +214,8 @@ impl Power4 {
         }
         count
     }
+
+    const CONNECT: u8 = 4; // should be 4 for connect-4
 }
 
 impl Game for Power4 {
@@ -233,6 +230,14 @@ impl Game for Power4 {
     type Player = NonZeroU8;
 
     type Score = i32;
+
+    fn new() -> Power4 {
+        Power4 {
+            board: [[None; 7]; 6],
+            plays: 0,
+            last_played_coords: None,
+        }
+    }
 
     fn get(&self, (row, column): (usize, usize)) -> Option<&NonZeroU8> {
         if row >= 6 || column >= 7 {
@@ -304,6 +309,13 @@ impl Game for Power4 {
                         */
 
                         match strike {
+                            Self::CONNECT => {
+                                return if strike_player == player {
+                                    i32::MAX
+                                } else {
+                                    i32::MIN
+                                };
+                            }
                             2 => {
                                 if (is_playable(before3()) && is_playable(before2())) // space 2 before
                                     || (is_playable(after1()) && is_playable(after2()))
@@ -328,13 +340,6 @@ impl Game for Power4 {
                                     }
                                 }
                             }
-                            4 => {
-                                return if strike_player == player {
-                                    i32::MAX
-                                } else {
-                                    i32::MIN
-                                };
-                            }
                             _ => {}
                         }
                     } else {
@@ -357,54 +362,25 @@ impl Game for Power4 {
         }
     }
 
-    /*
-        fn get_winner(&self) -> Option<Self::Player> {
-            if self.last_played_coords.is_none() {
-                return None;
-            }
-            let last_coords = self.last_played_coords.unwrap();
-            for mut line_iterator in self.lines_passing_at_longer_4(last_coords) {
-                let mut strike_player = NonZeroU8::new(1u8).unwrap();
-                let mut strike: u8 = 0;
-                let mut cell_option = line_iterator.get_with_offset(0);
-                while let Some(cell) = cell_option {
-                    if let Some(cell_player) = cell {
-                        if strike_player == cell_player {
-                            strike += 1;
-
-                            if strike == 4 {
-                                return Some(cell_player);
-                            }
-                        } else {
-                            strike_player = cell_player;
-
-                            strike = 1;
-                        }
-                    } else {
-                        strike = 0;
-                    }
-                    cell_option = line_iterator.next();
-                }
-            }
-            None
-        }
-    */
-
     fn get_winner(&self) -> Option<Self::Player> {
         if self.last_played_coords.is_none() {
             return None;
         }
         let last_coords = self.last_played_coords.unwrap();
         let counting_player = *self.get(last_coords).unwrap();
+        let connect_minus1 = Self::CONNECT - 1;
         for count_direction in CountDirection::half_side() {
             // max is 3 because we don't count the middle/start cell
-            let count = self.count_in_direction(last_coords, count_direction, 3);
-            if count == 3 {
+            let count = self.count_in_direction(last_coords, count_direction, connect_minus1);
+            if count == connect_minus1 {
                 return Some(counting_player);
             }
-            let count_opposite =
-                self.count_in_direction(last_coords, count_direction.opposite(), 3 - count);
-            if count + count_opposite == 3 {
+            let count_opposite = self.count_in_direction(
+                last_coords,
+                count_direction.opposite(),
+                connect_minus1 - count,
+            );
+            if count + count_opposite == connect_minus1 {
                 return Some(counting_player);
             }
         }
@@ -412,7 +388,7 @@ impl Game for Power4 {
     }
 
     fn is_full(&self) -> bool {
-        for i in 0..6 {
+        for i in 0..7 {
             if self.board[0][i].is_none() {
                 return false;
             }

@@ -10,12 +10,13 @@ use crate::scalar::Scalar;
 
 pub mod node;
 
-impl<G: Game + Send + Sync> GameNode<G> {
+impl<G: Game> GameNode<G> {
     pub fn explore_children(&mut self, bot_player: G::Player, max_depth: u32, real_plays: u32) {
         let now_playing = match self.game_state {
             PlayersTurn(playing_player, _) => playing_player,
             _ => panic!(
-                "Cannot explore children of a node that is not starting or played by a player"
+                "Cannot explore children of a node that is not starting or played by a player. Current state: {}",
+                self.game_state
             ),
         };
 
@@ -191,9 +192,15 @@ impl<G: Game + Send + Sync> GameNode<G> {
     }
 
     fn check_draw(&mut self) -> bool {
+        // consider draw as a loss for the bot, but not a loss as important as a real loss
+        let half_loose = G::Score::MIN().div(2);
+        if let Draw(_, _) = self.game_state {
+            // if we are here, it means that this function was called twice on the same node
+            self.expect_game().print();
+            self.set_weight(Some(half_loose));
+            return true;
+        }
         if self.game.as_ref().unwrap().is_full() {
-            // consider draw as a loss for the bot, but not a loss as important as a real loss
-            let half_loose = G::Score::MIN().div(2);
             self.set_weight(Some(half_loose));
             self.game_state = self.game_state.to_draw();
             return true;

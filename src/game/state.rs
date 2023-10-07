@@ -43,7 +43,7 @@ impl<G: Game> GameState<G> {
                 current_player.other(),
                 last_input.expect("Cannot draw when no play has been made"),
             ),
-            _ => panic!("game is not at playing state"),
+            _ => panic!("game is not at playing state, but at {}", self),
         }
     }
 

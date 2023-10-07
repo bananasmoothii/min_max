@@ -1,64 +1,57 @@
 use std::io;
 use std::num::NonZeroU8;
 
+use crate::bot::Bot;
 use crate::game::connect4::Power4;
 use crate::game::player::Player;
 use crate::game::Game;
-use crate::min_max::node::GameNode;
 
+mod bot;
 mod game;
 mod min_max;
 mod scalar;
 
 fn main() {
-    let max_depth = 8;
-
-    let mut times: Vec<u128> = Vec::new();
+    let max_depth = 9;
+    let bot_vs_bot = true;
 
     let p1 = NonZeroU8::new(1).unwrap();
     let p2 = NonZeroU8::new(2).unwrap();
 
     let bot_player: NonZeroU8 = p2;
 
-    let mut current_player = if ask_start() { p1 } else { p2 };
+    let mut current_player = if bot_vs_bot || ask_start() { p1 } else { p2 };
 
-    let mut game_tree: GameNode<Power4> = GameNode::new_root(Power4::new(), current_player, 0);
+    let mut bot: Bot<Power4> = Bot::new(p2, max_depth);
 
-    let bot_vs_bot = false; // doesn't work properly yet
-    let mut game_tree_2 = GameNode::new_root(Power4::new(), current_player.other(), 0);
+    let mut other_bot: Bot<Power4> = Bot::new(p1, max_depth);
 
     let mut p1_score: i32 = 0;
     loop {
         println!();
-        game_tree.expect_game().print();
+        bot.expect_game().print();
         println!("Scores: {p1_score} for player 1");
         println!();
         println!("Player {current_player}'s turn");
         if current_player == bot_player {
-            game_tree = bot_play(max_depth, &mut times, bot_player, game_tree);
-            game_tree_2 = GameNode::new_root(
-                game_tree.expect_game().clone(),
-                current_player,
-                game_tree.depth(),
-            );
+            let play = bot.play();
+            if bot_vs_bot {
+                other_bot.other_played(play).unwrap();
+            }
         } else {
             if bot_vs_bot {
-                game_tree_2 = bot_play(max_depth, &mut times, bot_player.other(), game_tree_2);
-                game_tree = GameNode::new_root(
-                    game_tree_2.expect_game().clone(),
-                    current_player,
-                    game_tree_2.depth(),
-                )
+                let play = other_bot.play();
+                bot.other_played(play).unwrap();
             } else {
-                let (cont, tree) = player_play(current_player, game_tree);
-                game_tree = tree;
-                if cont {
+                let result = player_play(&mut bot);
+                if let Err(err) = result {
+                    println!("Invalid move: {err}\n");
                     continue;
                 }
             }
         }
 
-        let game = game_tree.expect_game();
+        let game = bot.expect_game();
 
         p1_score = game.get_score(p1);
 
@@ -74,69 +67,13 @@ fn main() {
         }
         current_player = current_player.other();
     }
-    println!(
-        "Average time: {}ms",
-        times.iter().sum::<u128>() / times.len() as u128
-    );
+    println!("Average time: {}ms", bot.average_time());
 }
 
-fn player_play(
-    current_player: NonZeroU8,
-    mut game_tree: GameNode<Power4>,
-) -> (bool, GameNode<Power4>) {
+fn player_play(bot: &mut Bot<Power4>) -> Result<(), &str> {
     let column = get_user_input();
-    let had_children = !game_tree.children().is_empty();
-    let (is_known_move, mut new_game_tree) = game_tree.try_into_child(column - 1);
-    if is_known_move {
-        game_tree = new_game_tree;
-        debug_assert!(game_tree.game().is_some());
-    } else {
-        // Here, new_game_tree is actually game_tree, the ownership was given back to us
-        if had_children {
-            println!("Unexpected move... Maybe you are a pure genius, or a pure idiot.");
-        }
-        let result = new_game_tree
-            .expect_game_mut()
-            .play(current_player, column - 1);
-        if let Err(e) = result {
-            println!("{}", e);
-            game_tree = new_game_tree;
-            return (true, game_tree);
-        }
-        let depth = new_game_tree.depth() + 1;
-        let game = new_game_tree.into_expect_game();
-        let next_player = current_player.other();
-        game_tree = GameNode::new_root(game, next_player, depth);
-    }
-    (false, game_tree)
-}
-
-fn bot_play(
-    max_depth: u32,
-    times: &mut Vec<u128>,
-    bot_player: NonZeroU8,
-    mut game_tree: GameNode<Power4>,
-) -> GameNode<Power4> {
-    let start = std::time::Instant::now();
-    game_tree.explore_children(
-        bot_player,
-        max_depth,
-        game_tree.expect_game().plays() as u32,
-    );
-    //println!("Tree:\n {}", game_tree.debug(3));
-    //println!("Into best child...");
-    game_tree = game_tree.into_best_child();
-    let time = start.elapsed().as_millis();
-    times.push(time);
-    println!("Done in {}ms", time);
-    let weight_opt = game_tree.weight();
-    if weight_opt.is_some_and(|it| it > i32::MAX - 1000) {
-        println!("You're dead, sorry.");
-    } else if weight_opt.is_some_and(|it| it < i32::MIN + 1000) {
-        println!("Ok I'm basically dead...");
-    }
-    debug_assert!(game_tree.game().is_some());
-    game_tree
+    let play = column - 1;
+    bot.other_played(play)
 }
 
 fn ask_start() -> bool {

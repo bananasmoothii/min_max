@@ -8,7 +8,7 @@ pub mod connect4;
 pub mod player;
 pub(crate) mod state;
 
-pub trait Game: Clone + Send {
+pub trait Game: Clone + Send + Sync {
     type Coordinate;
 
     type InputCoordinate: Copy + Eq + Ord + Hash + Display + Send + Sync;
@@ -16,6 +16,8 @@ pub trait Game: Clone + Send {
     type Player: Player;
 
     type Score: Scalar;
+
+    fn new() -> Self;
 
     fn get(&self, coordinate: Self::Coordinate) -> Option<&Self::Player>;
 

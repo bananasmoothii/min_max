@@ -12,7 +12,7 @@ mod min_max;
 mod scalar;
 
 fn main() {
-    let max_depth = 9;
+    let max_depth = 10;
     let bot_vs_bot = true;
 
     let p1 = NonZeroU8::new(1).unwrap();

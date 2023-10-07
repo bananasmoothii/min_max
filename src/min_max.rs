@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use rayon::iter::*;
@@ -98,7 +99,9 @@ impl<G: Game> GameNode<G> {
             G::Score::MIN()
         }));
 
-        let check_children = self.fill_children(now_playing);
+        // WARNING: (maybe) destroying game here, for memory efficiency
+
+        let check_children = self.fill_children_and_destroy_game(now_playing, real_plays);
 
         let maybe_explore_children = |child: &mut Self| {
             let child_score = child.explore_children_recur(
@@ -154,26 +157,31 @@ impl<G: Game> GameNode<G> {
             weight.unwrap()
         };
 
-        // WARNING: (maybe) destroying game here, for memory efficiency
-        if self.depth() != real_plays {
-            self.game = None;
-        }
-
         weight
     }
 
-    fn fill_children(&mut self, now_playing: <G as Game>::Player) -> bool {
+    /// Returns true if childrens should be checked for win or draw, false if they were already checked
+    fn fill_children_and_destroy_game(
+        &mut self,
+        now_playing: <G as Game>::Player,
+        real_plays: u32,
+    ) -> bool {
         let game = self.game.as_ref().expect("game was removed too early");
 
         if self.children.is_empty() {
-            self.children = game
-                .possible_plays()
-                .iter()
-                .map(|&input_coord| {
+            // if we take the game from us, we don't have to clone it, but we can do this only once
+            let take_game = self.depth() != real_plays;
+
+            let possible_plays = game.possible_plays();
+            let possibilities = possible_plays.len();
+            let mut map = HashMap::with_capacity(possibilities);
+
+            if possibilities >= 2 || !take_game {
+                for i in 0..(possibilities - 1) {
+                    let input_coord = possible_plays[i];
                     let mut game = game.clone();
                     game.play(now_playing, input_coord).unwrap(); // should not panic as input_coord is a possible play
-
-                    (
+                    map.insert(
                         input_coord,
                         GameNode::new(
                             Some(game),
@@ -181,9 +189,31 @@ impl<G: Game> GameNode<G> {
                             None,
                             PlayersTurn(now_playing.other(), Some(input_coord)),
                         ),
-                    )
-                })
-                .collect(); // todo: a lot of memory is used here
+                    );
+                }
+            }
+            if possibilities >= 1 {
+                let input_coord = possible_plays[possibilities - 1];
+                let mut game = if take_game {
+                    // we don't want to destroy the game in the root node
+                    // add the game itself while "destroying" it for us
+                    self.game.take().unwrap()
+                } else {
+                    game.clone()
+                };
+                game.play(now_playing, input_coord).unwrap();
+                map.insert(
+                    input_coord,
+                    GameNode::new(
+                        Some(game),
+                        self.depth() + 1,
+                        None,
+                        PlayersTurn(now_playing.other(), Some(input_coord)),
+                    ),
+                );
+            }
+
+            self.children = map;
             true
         } else {
             self.regenerate_children_games();

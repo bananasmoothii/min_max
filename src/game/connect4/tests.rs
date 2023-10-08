@@ -90,10 +90,13 @@ mod p4_tests {
         println!();
         let mut game_tree = GameNode::new_root(power4.clone(), p2, 0);
         game_tree.explore_children(p2, 2, 0);
-        let wrong_chosen_node = game_tree
+        let wrong_play = NonZeroUsize::new(4).unwrap();
+        let wrong_chosen_node = &game_tree
             .children()
-            .get(&NonZeroUsize::new(4).unwrap())
-            .unwrap();
+            .iter()
+            .find(|(play, _)| play == &wrong_play)
+            .unwrap()
+            .1;
         assert_ne!(wrong_chosen_node.weight().unwrap(), 0);
     }
 

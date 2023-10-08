@@ -2,6 +2,7 @@ use std::cmp::min;
 use std::num::{NonZeroU8, NonZeroUsize};
 
 use console::Style;
+use rand::Rng;
 
 use crate::game::connect4::count_direction::CountDirection;
 use crate::game::connect4::iteration::{BoardIterator, P4IteratorType};
@@ -132,7 +133,7 @@ impl Power4 {
     }
 
     fn calculate_score(&self, aligns2: u16, aligns3: u16) -> i32 {
-        (5 * aligns2 + 25 * aligns3) as i32
+        (10 * aligns2 + 100 * aligns3) as i32
     }
 
     pub fn get_isize(&self, (row, column): (isize, isize)) -> Option<NonZeroU8> {
@@ -271,12 +272,14 @@ impl Game for Power4 {
      * Returns the score of the player, higher is better
      *
      * Scores:
-     * - 2 aligned: 5n (n = number of 2 aligned)
-     * - 3 aligned: 10^n (n = number of 3 aligned)
+     * - 2 aligned: 20n (n = number of 2 aligned)
+     * - 3 aligned: 100n (n = number of 3 aligned)
      * - 4 aligned: infinite
      * Subtract the same score for the opponent
+     * Scores are invalid if the line cannot be completed
      */
     fn get_score(&self, player: Self::Player) -> Self::Score {
+        // todo: optimize
         let mut p1_aligns2: u16 = 0;
         let mut p1_aligns3: u16 = 0;
         let mut p2_aligns2: u16 = 0;
@@ -402,9 +405,16 @@ impl Game for Power4 {
     }
 
     fn possible_plays(&self) -> Vec<NonZeroUsize> {
-        (1..=7usize)
+        let order: [usize; 7] = match rand::thread_rng().gen_range(0..=3) {
+            0 => [4, 3, 5, 2, 6, 1, 7],
+            1 => [3, 5, 4, 2, 6, 1, 7],
+            2 => [2, 6, 4, 3, 5, 1, 7],
+            _ => [7, 1, 6, 2, 5, 3, 4],
+        };
+        order
+            .iter()
             .filter(|&column| self.get((0, column - 1)).is_none())
-            .map(|column| NonZeroUsize::new(column).unwrap())
+            .map(|&column| NonZeroUsize::new(column).unwrap())
             .collect::<Vec<NonZeroUsize>>()
     }
 

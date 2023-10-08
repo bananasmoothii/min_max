@@ -37,8 +37,14 @@ impl Scalar for i32 {
 
     fn add_towards_0(&self, add: i32) -> Self {
         if *self > 0 {
+            if add > *self {
+                return 0;
+            }
             self.saturating_sub(add)
         } else if *self < 0 {
+            if -add < *self {
+                return 0;
+            }
             self.saturating_add(add)
         } else {
             *self

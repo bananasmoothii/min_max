@@ -67,8 +67,8 @@ impl<G: Game> Bot<G> {
             self.max_depth,
             game_tree.expect_game().plays() as u32,
         );
-        // println!("Tree:\n {}", game_tree.debug(3));
-        // println!("Into best child...");
+        // println!("Tree:\n {}", game_tree.debug(2));
+        println!("Comparing possibilities...");
         self.game_tree = Some(self.game_tree.take().unwrap().into_best_child());
 
         let game_tree = self.game_tree.as_ref().unwrap();

@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 
 use crate::game::state::GameState;
@@ -10,7 +9,7 @@ pub struct GameNode<G: Game> {
     // todo: reduce size of this struct
     depth: u32,
     weight: Option<G::Score>,
-    pub(super) children: HashMap<G::InputCoordinate, Self>,
+    pub(super) children: Vec<(G::InputCoordinate, Self)>,
     pub(super) game: Option<G>,
     pub game_state: GameState<G>,
 }
@@ -25,7 +24,7 @@ impl<G: Game> GameNode<G> {
         Self {
             depth,
             weight,
-            children: HashMap::new(),
+            children: Vec::new(),
             game,
             game_state,
         }
@@ -55,12 +54,16 @@ impl<G: Game> GameNode<G> {
      * Returns (false, self) if the child does not exist, else (true, child)
      */
     pub fn try_into_child(mut self, play: G::InputCoordinate) -> (bool, Self) {
-        if let Some(mut child) = self.children.remove(&play) {
-            child.fill_play(self.game.unwrap());
-            (true, child)
-        } else {
-            (false, self)
+        let mut new_children = Vec::with_capacity(self.children.len());
+        for (coord, mut child) in self.children.into_iter() {
+            if coord == play {
+                child.fill_play(self.game.unwrap());
+                return (true, child);
+            }
+            new_children.push((coord, child));
         }
+        self.children = new_children;
+        (false, self)
     }
 
     // Getters
@@ -71,7 +74,7 @@ impl<G: Game> GameNode<G> {
     pub fn weight(&self) -> Option<G::Score> {
         self.weight
     }
-    pub fn children(&self) -> &HashMap<G::InputCoordinate, Self> {
+    pub fn children(&self) -> &Vec<(G::InputCoordinate, Self)> {
         &self.children
     }
 
@@ -124,7 +127,7 @@ impl<G: Game> GameNode<G> {
 
     fn count_depth(&self) -> u32 {
         let mut max_depth = 0;
-        for child in self.children.values() {
+        for (_, child) in &self.children {
             let child_depth = child.count_depth() + 1;
             if child_depth > max_depth {
                 max_depth = child_depth;

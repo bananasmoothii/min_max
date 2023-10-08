@@ -12,7 +12,7 @@ mod min_max;
 mod scalar;
 
 fn main() {
-    let max_depth = 8;
+    let max_depth = 10;
     let bot_vs_bot = false;
 
     let p1 = NonZeroU8::new(1).unwrap();
@@ -23,7 +23,7 @@ fn main() {
     let mut current_player = if bot_vs_bot || ask_start() { p1 } else { p2 };
 
     let mut bot: Bot<Power4> = Bot::new(p2, max_depth);
-
+    // TODO: WHY IS OTHER8BOT 10 TIMES FASTER THAN BOT?????
     let mut other_bot: Bot<Power4> = Bot::new(p1, max_depth);
 
     let mut p1_score: i32 = 0;

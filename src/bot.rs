@@ -8,6 +8,7 @@ pub struct Bot<G: Game> {
     game_tree: Option<GameNode<G>>,
     max_depth: u32,
     times: Vec<u64>,
+    play_count: u32,
 }
 
 impl<G: Game> Bot<G> {
@@ -18,6 +19,7 @@ impl<G: Game> Bot<G> {
             game_tree: Some(GameNode::new_root(G::new(), player, 0)),
             max_depth,
             times: Vec::new(),
+            play_count: 0,
         }
     }
 
@@ -53,6 +55,7 @@ impl<G: Game> Bot<G> {
             let game = new_game_tree.into_expect_game();
             self.game_tree = Some(GameNode::new_root(game, self.player, depth));
         }
+        self.play_count += 1;
         Ok(())
     }
 
@@ -62,14 +65,13 @@ impl<G: Game> Bot<G> {
             .game_tree
             .as_mut()
             .expect("Bot has not been initialized");
-        game_tree.explore_children(
-            self.player,
-            self.max_depth,
-            game_tree.expect_game().plays() as u32,
-        );
+        game_tree.explore_children(self.player, self.max_depth, self.play_count);
+
         // println!("Tree:\n {}", game_tree.debug(2));
         println!("Comparing possibilities...");
         self.game_tree = Some(self.game_tree.take().unwrap().into_best_child());
+
+        self.play_count += 1;
 
         let game_tree = self.game_tree.as_ref().unwrap();
 

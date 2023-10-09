@@ -1,5 +1,5 @@
-use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
+use std::sync::atomic::{AtomicBool, AtomicI32};
 use std::sync::{Arc, Mutex};
 
 use rayon::iter::*;
@@ -24,6 +24,9 @@ impl<G: Game> GameNode<G> {
 
         println!("Exploring possibilities...");
 
+        #[cfg(debug_assertions)]
+        let call_count = Arc::new(AtomicI32::new(0));
+
         self.explore_children_recur(
             bot_player,
             max_depth,
@@ -35,13 +38,27 @@ impl<G: Game> GameNode<G> {
             } else {
                 G::Score::MIN()
             })),
+            #[cfg(debug_assertions)]
+            call_count.clone(),
         );
 
-        // println!("Completing weights...");
-        // self.complete_weights(bot_player);
+        #[cfg(debug_assertions)]
+        {
+            let call_count = call_count.load(Relaxed) as f64;
+            let call_cout_str = if call_count >= 1e9 {
+                format!("{:.2}G", call_count / 1e9)
+            } else if call_count >= 1e6 {
+                format!("{:.2}M", call_count / 1e6)
+            } else if call_count >= 1e3 {
+                format!("{:.2}K", call_count / 1e3)
+            } else {
+                format!("{}", call_count)
+            };
+            println!("Call count: {call_cout_str}");
+        }
     }
 
-    const FORK_DEPTH: u32 = 1;
+    const FORK_DEPTH: u32 = 2;
 
     const USE_GAME_SCORE: bool = true;
 
@@ -66,8 +83,12 @@ impl<G: Game> GameNode<G> {
         real_plays: u32,
         checks: bool,
         worst_sibling_score: Arc<Mutex<G::Score>>,
+        #[cfg(debug_assertions)] call_count: Arc<AtomicI32>,
     ) -> G::Score {
         assert!(self.depth() >= real_plays, "Negative exploration");
+
+        #[cfg(debug_assertions)]
+        call_count.fetch_add(1, Relaxed);
 
         let do_checks = checks || self.children.is_empty();
 
@@ -101,6 +122,8 @@ impl<G: Game> GameNode<G> {
                 real_plays,
                 check_children,
                 worst_child_score.clone(),
+                #[cfg(debug_assertions)]
+                call_count.clone(),
             );
             let mut worst_child_score = worst_child_score.lock().unwrap();
             // println!("maximize: {maximize},  child: {child_score} worst child: {worst_child_score}");

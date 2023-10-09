@@ -12,8 +12,8 @@ mod min_max;
 mod scalar;
 
 fn main() {
-    let max_depth = 10;
-    let bot_vs_bot = false;
+    let max_depth = 11;
+    let bot_vs_bot = true;
 
     let p1 = NonZeroU8::new(1).unwrap();
     let p2 = NonZeroU8::new(2).unwrap();
@@ -22,14 +22,18 @@ fn main() {
 
     let mut current_player = if bot_vs_bot || ask_start() { p1 } else { p2 };
 
-    let mut bot: Bot<Power4> = Bot::new(p2, max_depth);
-    // TODO: WHY IS OTHER8BOT 10 TIMES FASTER THAN BOT?????
-    let mut other_bot: Bot<Power4> = Bot::new(p1, max_depth);
+    let mut bot: Bot<Power4> = Bot::new(bot_player, max_depth);
+    let mut other_bot: Bot<Power4> = Bot::new(bot_player.other(), max_depth);
 
     let mut p1_score: i32 = 0;
     loop {
         println!();
         bot.expect_game().print();
+        #[cfg(debug_assertions)]
+        {
+            let p2_score = other_bot.expect_game().get_score(p2);
+            assert_eq!(p1_score, -p2_score);
+        }
         println!("Scores: {p1_score} for player 1");
         println!();
         println!("Player {current_player}'s turn");
@@ -65,6 +69,7 @@ fn main() {
             game.print();
             break;
         }
+
         current_player = current_player.other();
     }
     println!("Average time: {}ms", bot.average_time());

@@ -38,11 +38,6 @@ pub trait Game: Clone + Send + Sync {
     fn print(&self);
 
     /**
-     * Number of plays made in the game
-     */
-    fn plays(&self) -> u16;
-
-    /**
      * Last play made in the game. None only if no play has been made yet.
      */
     fn last_play(&self) -> Option<Self::InputCoordinate>;

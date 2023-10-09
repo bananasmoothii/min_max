@@ -15,7 +15,6 @@ mod tests;
 #[derive(Debug, Clone)]
 pub struct Power4 {
     board: [[Option<NonZeroU8>; 7]; 6],
-    plays: u16,
     last_played_coords: Option<(usize, usize)>,
 }
 
@@ -153,10 +152,6 @@ impl Power4 {
         if self.last_played_coords.is_none() {
             return None;
         }
-        if self.plays < 7 {
-            // No winner before 7 plays
-            return None;
-        }
         let last_coords = self.last_played_coords.unwrap();
         let connect = Self::CONNECT as usize;
         for mut line_iterator in self.lines_passing_at_longer_4(last_coords) {
@@ -239,7 +234,6 @@ impl Game for Power4 {
     fn new() -> Power4 {
         Power4 {
             board: [[None; 7]; 6],
-            plays: 0,
             last_played_coords: None,
         }
     }
@@ -260,7 +254,6 @@ impl Game for Power4 {
             let y = 5 - i;
             if self.board[y][column].is_none() {
                 self.board[y][column] = Some(player);
-                self.plays += 1;
                 self.last_played_coords = Some((y, column));
                 return Ok(());
             }
@@ -280,15 +273,15 @@ impl Game for Power4 {
      */
     fn get_score(&self, player: Self::Player) -> Self::Score {
         // todo: optimize
-        let mut p1_aligns2: u16 = 0;
-        let mut p1_aligns3: u16 = 0;
-        let mut p2_aligns2: u16 = 0;
-        let mut p2_aligns3: u16 = 0;
+        let mut aligns2: u16 = 0;
+        let mut aligns3: u16 = 0;
+        let mut other_aligns2: u16 = 0;
+        let mut other_aligns3: u16 = 0;
         // let debug_cell = |cell: Option<Option<NonZeroU8>>| cell.map(|c| c.map(|c| c.to_string()).unwrap_or("-".to_string())).unwrap_or("X".to_string());
         let is_playable =
             |cell: Option<Option<NonZeroU8>>| cell.is_some() && cell.unwrap().is_none();
         for mut line_iterator in self.all_lines_longer_4() {
-            let mut strike_player = NonZeroU8::new(1u8).unwrap();
+            let mut strike_player = NonZeroU8::new(10u8).unwrap(); // this value is never used
             let mut strike: u8 = 0;
             let mut cell_option = line_iterator.get_with_offset(0);
             while let Some(cell) = cell_option {
@@ -330,9 +323,9 @@ impl Game for Power4 {
                                 // space 2 after
                                 {
                                     if strike_player == player {
-                                        p1_aligns2 += 1;
+                                        aligns2 += 1;
                                     } else {
-                                        p2_aligns2 += 1;
+                                        other_aligns2 += 1;
                                     }
                                 }
                             }
@@ -342,9 +335,9 @@ impl Game for Power4 {
                                 // space 1 after
                                 {
                                     if strike_player == player {
-                                        p1_aligns3 += 1;
+                                        aligns3 += 1;
                                     } else {
-                                        p2_aligns3 += 1;
+                                        other_aligns3 += 1;
                                     }
                                 }
                             }
@@ -361,13 +354,7 @@ impl Game for Power4 {
                 cell_option = line_iterator.next();
             }
         }
-        let p1_score = self.calculate_score(p1_aligns2, p1_aligns3)
-            - self.calculate_score(p2_aligns2, p2_aligns3);
-        if player == NonZeroU8::new(1u8).unwrap() {
-            p1_score
-        } else {
-            -p1_score
-        }
+        self.calculate_score(aligns2, aligns3) - self.calculate_score(other_aligns2, other_aligns3)
     }
 
     fn get_winner(&self) -> Option<Self::Player> {
@@ -405,7 +392,7 @@ impl Game for Power4 {
     }
 
     fn possible_plays(&self) -> Vec<NonZeroUsize> {
-        let order: [usize; 7] = match rand::thread_rng().gen_range(0..=3) {
+        let order: [usize; 7] = match rand::thread_rng().gen_range(0..=4) {
             0 => [4, 3, 5, 2, 6, 1, 7],
             1 => [3, 5, 4, 2, 6, 1, 7],
             2 => [2, 6, 4, 3, 5, 1, 7],
@@ -453,10 +440,6 @@ impl Game for Power4 {
             }
             println!();
         }
-    }
-
-    fn plays(&self) -> u16 {
-        self.plays
     }
 
     fn last_play(&self) -> Option<Self::InputCoordinate> {

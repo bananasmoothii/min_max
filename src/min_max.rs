@@ -248,7 +248,7 @@ impl<G: Game> GameNode<G> {
         let half_loose = G::Score::MIN().div(2);
         if let Draw(_, _) = self.game_state {
             // if we are here, it means that this function was called twice on the same node
-            self.expect_game().print();
+            // this is due to multi-threading
             self.set_weight(Some(half_loose));
             return true;
         }

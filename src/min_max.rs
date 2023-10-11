@@ -155,7 +155,7 @@ impl<G: Game> GameNode<G> {
         let weight = if self.is_parallelize_depth(real_plays) {
             // parallelize
             self.children.par_iter_mut().try_for_each(|(_, child)| {
-                print!("F");
+                //print!("F");
                 maybe_explore_children(child)
             });
             let weight = (*worst_child_score.lock().unwrap()).into();

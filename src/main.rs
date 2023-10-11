@@ -1,6 +1,8 @@
 use std::io;
 use std::num::{NonZeroU8, NonZeroUsize};
 
+use thousands::Separable;
+
 use crate::bot::Bot;
 use crate::game::connect4::Power4;
 use crate::game::player::Player;
@@ -15,6 +17,13 @@ fn main() {
     let max_depth = 9;
     let bot_vs_bot = false;
 
+    let worst_case: u64 = (1..=max_depth).into_iter().map(|n| 7u64.pow(n)).sum();
+    println!(
+        "Max depth: {max_depth} -> Worst case: 7^{} + 7^{} + ... + 7^1) = {} nodes",
+        max_depth,
+        max_depth - 1,
+        worst_case.separate_with_commas()
+    );
     let p1 = NonZeroU8::new(1).unwrap();
     let p2 = NonZeroU8::new(2).unwrap();
 

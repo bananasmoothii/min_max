@@ -238,7 +238,6 @@ impl ConnectFour {
                 if let Some(cell_player) = cell {
                     let cell_player_u8 = cell_player.get();
                     if strike_player == cell_player_u8 {
-                        let before4 = || line_iterator.get_with_offset(-4);
                         let before3 = || line_iterator.get_with_offset(-3);
                         let before2 = || line_iterator.get_with_offset(-2);
                         // let before1 = || line_iterator.get_with_offset(-1);

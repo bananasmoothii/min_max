@@ -19,5 +19,5 @@ This game currently plays in the terminal. To play, run the following command (a
 cargo run --release
 ```
 
-By default, the bot computes 9 moves ahead. You can change this in the first line of the `main` function
+By default, the bot computes 10 moves ahead. You can change this in the first line of the `main` function
 in `src/main.rs`.

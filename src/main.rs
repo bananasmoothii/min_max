@@ -15,7 +15,7 @@ mod scalar;
 
 fn main() {
     let max_depth = 10;
-    let bot_vs_bot = true;
+    let bot_vs_bot = false;
 
     let worst_case: u64 = (1..=max_depth).into_iter().map(|n| 7u64.pow(n)).sum();
     println!(
@@ -24,6 +24,24 @@ fn main() {
         max_depth - 1,
         worst_case.separate_with_commas()
     );
+
+    if bot_vs_bot {
+        let mut times: Vec<u64> = Vec::new();
+        loop {
+            let time = game(max_depth, bot_vs_bot);
+            times.push(time);
+            println!(
+                "Average time: {}ms",
+                times.iter().sum::<u64>() / times.len() as u64
+            );
+        }
+    } else {
+        let time = game(max_depth, bot_vs_bot);
+        println!("Average time: {}ms", time);
+    }
+}
+
+fn game(max_depth: u32, bot_vs_bot: bool) -> u64 {
     let p1 = NonZeroU8::new(1).unwrap();
     let p2 = NonZeroU8::new(2).unwrap();
 
@@ -68,7 +86,9 @@ fn main() {
 
         p1_score = game.get_score(p1);
 
-        if p1_score == <ConnectFour as Game>::Score::MAX || p1_score == <ConnectFour as Game>::Score::MIN {
+        if p1_score == <ConnectFour as Game>::Score::MAX
+            || p1_score == <ConnectFour as Game>::Score::MIN
+        {
             println!("Player {current_player} won!\n");
             game.print();
             break;
@@ -81,7 +101,7 @@ fn main() {
 
         current_player = current_player.other();
     }
-    println!("Average time: {}ms", bot.average_time());
+    bot.average_time()
 }
 
 fn player_play(bot: &mut Bot<ConnectFour>) -> Result<(), &str> {

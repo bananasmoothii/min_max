@@ -14,7 +14,7 @@ mod min_max;
 mod scalar;
 
 fn main() {
-    let max_depth = 9;
+    let max_depth = 10;
     let bot_vs_bot = false;
 
     let worst_case: u64 = (1..=max_depth).into_iter().map(|n| 7u64.pow(n)).sum();

@@ -153,14 +153,13 @@ impl ConnectFour {
 
     pub fn get_winner_coords(
         &self,
-    ) -> Option<[<Self as Game>::Coordinate; Self::CONNECT as usize]> {
+    ) -> Option<[<Self as Game>::Coordinate; 4]> {
         if self.last_played_coords.is_none() {
             return None;
         }
         let last_coords = self.last_played_coords.unwrap();
-        let connect = Self::CONNECT as usize;
         for mut line_iterator in self.lines_passing_at_longer_4(last_coords) {
-            let mut winner_coords: Vec<(isize, isize)> = Vec::with_capacity(2 * connect - 1);
+            let mut winner_coords: Vec<(isize, isize)> = Vec::with_capacity(2 * 4 - 1);
             let mut strike_player = NonZeroU8::new(1u8).unwrap();
             let mut strike: u8 = 0;
             let mut cell_option = line_iterator.get_with_offset(0);
@@ -170,11 +169,11 @@ impl ConnectFour {
                     if strike_player == cell_player {
                         strike += 1;
 
-                        if strike == Self::CONNECT {
-                            let mut result = [(0usize, 0usize); Self::CONNECT as usize];
+                        if strike == 4 {
+                            let mut result = [(0usize, 0usize); 4];
                             let winner_coords_size = winner_coords.len();
-                            for i in 0..connect {
-                                let (y, x) = winner_coords[winner_coords_size - connect + i];
+                            for i in 0..4 {
+                                let (y, x) = winner_coords[winner_coords_size - 4 + i];
                                 result[i] = (y as usize, x as usize);
                             }
                             return Some(result);
@@ -221,7 +220,7 @@ impl ConnectFour {
     }
 
     fn compute_aligments(&mut self) {
-        // todo: optimize
+        /*
         let mut p1_aligns2 = 0;
         let mut p1_aligns3 = 0;
         let mut p2_aligns2 = 0;
@@ -291,9 +290,52 @@ impl ConnectFour {
         self.p1_aligns3 = p1_aligns3;
         self.p2_aligns2 = p2_aligns2;
         self.p2_aligns3 = p2_aligns3;
-    }
 
-    const CONNECT: u8 = 4; // should be 4 for connect-4
+         */
+        if self.last_played_coords.is_none() {
+            return;
+        }
+        let last_coords = self.last_played_coords.unwrap();
+        let counting_player = *self.get(last_coords).unwrap();
+        for count_direction in CountDirection::half_side() {
+            // max is 3 (4 - 1) because we don't count the middle/start cell
+            let count = self.count_in_direction(last_coords, count_direction, 3);
+            if count == 3 {
+                self.winner = Some(counting_player);
+                return;
+            }
+            let count_opposite = self.count_in_direction(
+                last_coords,
+                count_direction.opposite(),
+                3 - count,
+            );
+            if count + count_opposite == 3 {
+                self.winner = Some(counting_player);
+                return;
+            }
+
+            let counting_player_u8 = counting_player.get();
+
+            if count == 2 || count_opposite == 2 {
+                // implies that the other count is <= 1
+                // total: 3
+                if counting_player_u8 == 1u8 {
+                    self.p1_aligns2 -= 1;
+                    self.p1_aligns3 += 1;
+                } else {
+                    self.p2_aligns2 -= 1;
+                    self.p2_aligns3 += 1;
+                }
+            } else if count + count_opposite == 1 {
+                // total: 2
+                if counting_player_u8 == 1u8 {
+                    self.p1_aligns2 += 1;
+                } else {
+                    self.p2_aligns2 += 1;
+                }
+            }
+        }
+    }
 }
 
 impl Game for ConnectFour {
@@ -363,7 +405,7 @@ impl Game for ConnectFour {
                 Self::Score::MAX
             } else {
                 Self::Score::MIN
-            }
+            };
         }
         let p1_score = self.calculate_score(self.p1_aligns2, self.p1_aligns3)
             - self.calculate_score(self.p2_aligns2, self.p2_aligns3);
@@ -375,6 +417,7 @@ impl Game for ConnectFour {
     }
 
     fn get_winner(&self) -> Option<Self::Player> {
+        /*
         if self.last_played_coords.is_none() {
             return None;
         }
@@ -397,6 +440,9 @@ impl Game for ConnectFour {
             }
         }
         None
+
+         */
+        self.winner
     }
 
     fn is_full(&self) -> bool {

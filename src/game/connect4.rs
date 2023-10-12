@@ -13,12 +13,12 @@ mod iteration;
 mod tests;
 
 #[derive(Debug, Clone)]
-pub struct Power4 {
+pub struct ConnectFour {
     board: [[Option<NonZeroU8>; 7]; 6],
     last_played_coords: Option<(usize, usize)>,
 }
 
-impl Power4 {
+impl ConnectFour {
     /**
      * Returns all iterators for all lines having 4 or more cells
      */
@@ -91,7 +91,7 @@ impl Power4 {
 
     fn lines_passing_at_longer_4(
         &self,
-        coords: <Power4 as Game>::Coordinate,
+        coords: <ConnectFour as Game>::Coordinate,
     ) -> Vec<BoardIterator> {
         let y = coords.0 as isize;
         let x = coords.1 as isize;
@@ -190,7 +190,7 @@ impl Power4 {
 
     fn count_in_direction(
         &self,
-        start: <Power4 as Game>::Coordinate,
+        start: <ConnectFour as Game>::Coordinate,
         direction: CountDirection,
         max: u8,
     ) -> u8 {
@@ -218,7 +218,7 @@ impl Power4 {
     const CONNECT: u8 = 4; // should be 4 for connect-4
 }
 
-impl Game for Power4 {
+impl Game for ConnectFour {
     /// (row, column) or (y, x)
     type Coordinate = (usize, usize);
 
@@ -231,8 +231,8 @@ impl Game for Power4 {
 
     type Score = i32;
 
-    fn new() -> Power4 {
-        Power4 {
+    fn new() -> ConnectFour {
+        ConnectFour {
             board: [[None; 7]; 6],
             last_played_coords: None,
         }

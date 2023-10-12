@@ -1,6 +1,6 @@
 use strum_macros::EnumIter;
 
-use crate::game::connect4::Power4;
+use crate::game::connect4::ConnectFour;
 use crate::game::Game;
 
 #[derive(EnumIter, Debug, Copy, Clone, PartialEq)]
@@ -12,7 +12,7 @@ pub enum P4IteratorType {
 }
 
 pub struct BoardIterator<'a> {
-    game: &'a Power4,
+    game: &'a ConnectFour,
     pub iterator_type: P4IteratorType,
     pub y: isize,
     pub x: isize,
@@ -20,7 +20,7 @@ pub struct BoardIterator<'a> {
 
 impl BoardIterator<'_> {
     pub fn new_at(
-        game: &Power4,
+        game: &ConnectFour,
         iterator_type: P4IteratorType,
         x: isize,
         y: isize,
@@ -78,7 +78,7 @@ impl BoardIterator<'_> {
 }
 
 impl<'a> Iterator for BoardIterator<'a> {
-    type Item = Option<<Power4 as Game>::Player>;
+    type Item = Option<<ConnectFour as Game>::Player>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let (y, x) = self.increment();
@@ -89,7 +89,7 @@ impl<'a> Iterator for BoardIterator<'a> {
     }
 }
 
-impl<'a> IntoIterator for &'a Power4 {
+impl<'a> IntoIterator for &'a ConnectFour {
     type Item = <BoardIterator<'a> as Iterator>::Item;
 
     type IntoIter = BoardIterator<'a>;

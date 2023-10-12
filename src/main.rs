@@ -4,7 +4,7 @@ use std::num::{NonZeroU8, NonZeroUsize};
 use thousands::Separable;
 
 use crate::bot::Bot;
-use crate::game::connect4::Power4;
+use crate::game::connect4::ConnectFour;
 use crate::game::player::Player;
 use crate::game::Game;
 
@@ -31,8 +31,8 @@ fn main() {
 
     let mut current_player = if bot_vs_bot || ask_start() { p1 } else { p2 };
 
-    let mut bot: Bot<Power4> = Bot::new(bot_player, max_depth);
-    let mut other_bot: Bot<Power4> = Bot::new(bot_player.other(), max_depth);
+    let mut bot: Bot<ConnectFour> = Bot::new(bot_player, max_depth);
+    let mut other_bot: Bot<ConnectFour> = Bot::new(bot_player.other(), max_depth);
 
     let mut p1_score: i32 = 0;
     loop {
@@ -68,7 +68,7 @@ fn main() {
 
         p1_score = game.get_score(p1);
 
-        if p1_score == <Power4 as Game>::Score::MAX || p1_score == <Power4 as Game>::Score::MIN {
+        if p1_score == <ConnectFour as Game>::Score::MAX || p1_score == <ConnectFour as Game>::Score::MIN {
             println!("Player {current_player} won!\n");
             game.print();
             break;
@@ -84,7 +84,7 @@ fn main() {
     println!("Average time: {}ms", bot.average_time());
 }
 
-fn player_play(bot: &mut Bot<Power4>) -> Result<(), &str> {
+fn player_play(bot: &mut Bot<ConnectFour>) -> Result<(), &str> {
     let column = get_user_input();
     bot.other_played(NonZeroUsize::new(column).unwrap())
 }

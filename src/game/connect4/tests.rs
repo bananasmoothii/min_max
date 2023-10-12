@@ -6,13 +6,13 @@ mod p4_tests {
 
     use crate::game::connect4::count_direction::CountDirection;
     use crate::game::connect4::iteration::P4IteratorType;
-    use crate::game::connect4::Power4;
+    use crate::game::connect4::ConnectFour;
     use crate::game::Game;
     use crate::min_max::node::GameNode;
 
     #[test]
     fn lines_passing_at() {
-        let power4 = Power4::new();
+        let power4 = ConnectFour::new();
         let lines = power4.lines_passing_at_longer_4((0, 0));
         assert_eq!(lines.len(), 3);
         let lines = power4.lines_passing_at_longer_4((2, 3));
@@ -39,7 +39,7 @@ mod p4_tests {
 
     #[test]
     fn get_winner() {
-        let mut power4 = Power4::new();
+        let mut power4 = ConnectFour::new();
         let p1 = NonZeroU8::new(1).unwrap();
         let p2 = NonZeroU8::new(2).unwrap();
 
@@ -68,7 +68,7 @@ mod p4_tests {
 
     #[test]
     fn min_max_should_not_help_winning() {
-        let mut power4 = Power4::new();
+        let mut power4 = ConnectFour::new();
         let p1 = NonZeroU8::new(1).unwrap();
         let p2 = NonZeroU8::new(2).unwrap();
 
@@ -102,7 +102,7 @@ mod p4_tests {
 
     #[test]
     fn get_winner_2() {
-        let mut power4 = Power4::new();
+        let mut power4 = ConnectFour::new();
         let p1 = NonZeroU8::new(1).unwrap();
         let p2 = NonZeroU8::new(2).unwrap();
 
@@ -152,7 +152,7 @@ mod p4_tests {
 
     #[test]
     fn count_in_direction() {
-        let mut power4 = Power4::new();
+        let mut power4 = ConnectFour::new();
         let p1 = NonZeroU8::new(1).unwrap();
         let p2 = NonZeroU8::new(2).unwrap();
 

@@ -58,7 +58,7 @@ impl<G: Game> GameNode<G> {
         }
     }
 
-    const FORK_DEPTH: u32 = 2;
+    const FORK_DEPTH: u32 = 3;
 
     const USE_GAME_SCORE: bool = true;
 

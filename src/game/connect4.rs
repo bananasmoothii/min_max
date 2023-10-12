@@ -336,6 +336,8 @@ impl ConnectFour {
             }
         }
     }
+
+    const RANDOMIZE_POSSIBLE_PLAYS: bool = false;
 }
 
 impl Game for ConnectFour {
@@ -455,11 +457,14 @@ impl Game for ConnectFour {
     }
 
     fn possible_plays(&self) -> Vec<NonZeroUsize> {
-        let order: [usize; 7] = match rand::thread_rng().gen_range(0..=4) {
-            0 => [4, 3, 5, 2, 6, 1, 7],
-            1 => [3, 5, 4, 2, 6, 1, 7],
-            2 => [2, 6, 4, 3, 5, 1, 7],
-            _ => [7, 1, 6, 2, 5, 3, 4],
+        let order: [usize; 7] = if Self::RANDOMIZE_POSSIBLE_PLAYS {
+            match rand::thread_rng().gen_range(0..=2) {
+                0 => [4, 3, 5, 2, 6, 1, 7],
+                1 => [3, 5, 4, 2, 6, 1, 7],
+                _ => [2, 6, 4, 3, 5, 1, 7],
+            }
+        } else {
+            [4, 3, 5, 2, 6, 1, 7]
         };
         order
             .iter()

@@ -16,6 +16,11 @@ mod tests;
 pub struct ConnectFour {
     board: [[Option<NonZeroU8>; 7]; 6],
     last_played_coords: Option<(usize, usize)>,
+    winner: Option<NonZeroU8>,
+    p1_aligns2: u16,
+    p1_aligns3: u16,
+    p2_aligns2: u16,
+    p2_aligns3: u16,
 }
 
 impl ConnectFour {
@@ -215,13 +220,89 @@ impl ConnectFour {
         count
     }
 
+    fn compute_aligments(&mut self) {
+        // todo: optimize
+        let mut p1_aligns2 = 0;
+        let mut p1_aligns3 = 0;
+        let mut p2_aligns2 = 0;
+        let mut p2_aligns3 = 0;
+
+        // let debug_cell = |cell: Option<Option<NonZeroU8>>| cell.map(|c| c.map(|c| c.to_string()).unwrap_or("-".to_string())).unwrap_or("X".to_string());
+        let is_playable =
+            |cell: Option<Option<NonZeroU8>>| cell.is_some() && cell.unwrap().is_none();
+        for mut line_iterator in self.all_lines_longer_4() {
+            let mut strike_player = 0u8; // this value is never used
+            let mut strike: u8 = 0;
+            let mut cell_option = line_iterator.get_with_offset(0);
+            while let Some(cell) = cell_option {
+                if let Some(cell_player) = cell {
+                    let cell_player_u8 = cell_player.get();
+                    if strike_player == cell_player_u8 {
+                        let before4 = || line_iterator.get_with_offset(-4);
+                        let before3 = || line_iterator.get_with_offset(-3);
+                        let before2 = || line_iterator.get_with_offset(-2);
+                        // let before1 = || line_iterator.get_with_offset(-1);
+                        let after1 = || line_iterator.get_with_offset(1);
+                        let after2 = || line_iterator.get_with_offset(2);
+
+                        strike += 1;
+
+                        match strike {
+                            Self::CONNECT => {
+                                self.winner = Some(cell_player);
+                                return;
+                            }
+                            2 => {
+                                if (is_playable(before3()) && is_playable(before2())) // space 2 before
+                                    || (is_playable(after1()) && is_playable(after2()))
+                                // space 2 after
+                                {
+                                    if strike_player == 1u8 {
+                                        p1_aligns2 += 1;
+                                    } else {
+                                        p2_aligns2 += 1;
+                                    }
+                                }
+                            }
+                            3 => {
+                                if is_playable(before3()) // space 1 before
+                                    || is_playable(after1()) // space 1 after
+                                {
+                                    if strike_player == 1u8 {
+                                        p1_aligns3 += 1;
+                                    } else {
+                                        p2_aligns3 += 1;
+                                    }
+                                }
+                            }
+                            _ => {}
+                        }
+                    } else {
+                        strike_player = cell_player_u8;
+
+                        strike = 1;
+                    }
+                } else {
+                    strike = 0;
+                }
+                cell_option = line_iterator.next();
+            }
+        }
+        self.p1_aligns2 = p1_aligns2;
+        self.p1_aligns3 = p1_aligns3;
+        self.p2_aligns2 = p2_aligns2;
+        self.p2_aligns3 = p2_aligns3;
+    }
+
     const CONNECT: u8 = 4; // should be 4 for connect-4
 }
 
 impl Game for ConnectFour {
-    /// (row, column) or (y, x)
+    /// (row, column) or (y, x). Starts at (0, 0) at the top left corner and ends at (5, 6) at the
+    /// bottom right corner
     type Coordinate = (usize, usize);
 
+    /// an usize from 1 to 7
     type InputCoordinate = NonZeroUsize;
 
     /**
@@ -235,6 +316,11 @@ impl Game for ConnectFour {
         ConnectFour {
             board: [[None; 7]; 6],
             last_played_coords: None,
+            winner: None,
+            p1_aligns2: 0,
+            p1_aligns3: 0,
+            p2_aligns2: 0,
+            p2_aligns3: 0,
         }
     }
 
@@ -246,15 +332,16 @@ impl Game for ConnectFour {
     }
 
     fn play<'a>(&mut self, player: NonZeroU8, column: NonZeroUsize) -> Result<(), &'a str> {
-        let column = column.get() - 1;
-        if column >= 7 {
+        let column_min1 = column.get() - 1;
+        if column_min1 >= 7 {
             return Err("Column out of bounds");
         }
         for i in 0..6 {
             let y = 5 - i;
-            if self.board[y][column].is_none() {
-                self.board[y][column] = Some(player);
-                self.last_played_coords = Some((y, column));
+            if self.board[y][column_min1].is_none() {
+                self.board[y][column_min1] = Some(player);
+                self.last_played_coords = Some((y, column_min1));
+                self.compute_aligments();
                 return Ok(());
             }
         }
@@ -272,89 +359,13 @@ impl Game for ConnectFour {
      * Scores are invalid if the line cannot be completed
      */
     fn get_score(&self, player: Self::Player) -> Self::Score {
-        // todo: optimize
-        let mut aligns2: u16 = 0;
-        let mut aligns3: u16 = 0;
-        let mut other_aligns2: u16 = 0;
-        let mut other_aligns3: u16 = 0;
-        // let debug_cell = |cell: Option<Option<NonZeroU8>>| cell.map(|c| c.map(|c| c.to_string()).unwrap_or("-".to_string())).unwrap_or("X".to_string());
-        let is_playable =
-            |cell: Option<Option<NonZeroU8>>| cell.is_some() && cell.unwrap().is_none();
-        for mut line_iterator in self.all_lines_longer_4() {
-            let mut strike_player = NonZeroU8::new(10u8).unwrap(); // this value is never used
-            let mut strike: u8 = 0;
-            let mut cell_option = line_iterator.get_with_offset(0);
-            while let Some(cell) = cell_option {
-                if let Some(cell_player) = cell {
-                    if strike_player == cell_player {
-                        let before4 = || line_iterator.get_with_offset(-4);
-                        let before3 = || line_iterator.get_with_offset(-3);
-                        let before2 = || line_iterator.get_with_offset(-2);
-                        // let before1 = || line_iterator.get_with_offset(-1);
-                        let after1 = || line_iterator.get_with_offset(1);
-                        let after2 = || line_iterator.get_with_offset(2);
-
-                        strike += 1;
-                        /*
-                        println!(
-                            "{:?} ({strike}) {} {} {} {} [{}] {} {}",
-                            line_iterator.iterator_type,
-                            debug_cell(before4()),
-                            debug_cell(before3()),
-                            debug_cell(before2()),
-                            debug_cell(before1()),
-                            debug_cell(cell_option),
-                            debug_cell(after1()),
-                            debug_cell(after2())
-                        );
-                        */
-
-                        match strike {
-                            Self::CONNECT => {
-                                return if strike_player == player {
-                                    i32::MAX
-                                } else {
-                                    i32::MIN
-                                };
-                            }
-                            2 => {
-                                if (is_playable(before3()) && is_playable(before2())) // space 2 before
-                                    || (is_playable(after1()) && is_playable(after2()))
-                                // space 2 after
-                                {
-                                    if strike_player == player {
-                                        aligns2 += 1;
-                                    } else {
-                                        other_aligns2 += 1;
-                                    }
-                                }
-                            }
-                            3 => {
-                                if (is_playable(before4())) // space 1 before
-                                    || (is_playable(after1()))
-                                // space 1 after
-                                {
-                                    if strike_player == player {
-                                        aligns3 += 1;
-                                    } else {
-                                        other_aligns3 += 1;
-                                    }
-                                }
-                            }
-                            _ => {}
-                        }
-                    } else {
-                        strike_player = cell_player;
-
-                        strike = 1;
-                    }
-                } else {
-                    strike = 0;
-                }
-                cell_option = line_iterator.next();
-            }
+        let p1_score = self.calculate_score(self.p1_aligns2, self.p1_aligns3)
+            - self.calculate_score(self.p2_aligns2, self.p2_aligns3);
+        if player.get() == 1u8 {
+            p1_score
+        } else {
+            -p1_score
         }
-        self.calculate_score(aligns2, aligns3) - self.calculate_score(other_aligns2, other_aligns3)
     }
 
     fn get_winner(&self) -> Option<Self::Player> {

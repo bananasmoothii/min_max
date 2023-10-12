@@ -13,15 +13,22 @@ mod p4_tests {
     #[test]
     fn lines_passing_at() {
         let power4 = ConnectFour::new();
-        let lines = power4.lines_passing_at_longer_4((0, 0));
+        let lines = power4.lines_passing_at_longer_4((1, 1));
         assert_eq!(lines.len(), 3);
         let lines = power4.lines_passing_at_longer_4((2, 3));
         assert_eq!(
             lines
                 .iter()
-                .map(|iter| (iter.x, iter.y))
+                .map(|iter| (iter.y, iter.x, iter.iterator_type))
                 .collect::<Vec<_>>(),
-            vec![(0, 2), (3, 0), (1, 0), (0, 5)]
+            vec![(2, 0, P4IteratorType::Horizontal), (0, 3, P4IteratorType::Vertical), (0, 1, P4IteratorType::DiagonalDown), (5, 0, P4IteratorType::DiagonalUp)]
+        );
+        assert_eq!(
+            power4.lines_passing_at_longer_4((3, 2))
+                .iter()
+                .map(|iter| (iter.y, iter.x, iter.iterator_type))
+                .collect::<Vec<_>>(),
+            vec![(3, 0, P4IteratorType::Horizontal), (0, 2, P4IteratorType::Vertical), (1, 0, P4IteratorType::DiagonalDown), (5, 0, P4IteratorType::DiagonalUp)]
         );
         let lines = power4
             .lines_passing_at_longer_4((3, 4))
@@ -171,5 +178,40 @@ mod p4_tests {
             power4.count_in_direction((5, 2), CountDirection::HorizontalLeft, 1),
             1
         );
+    }
+
+    #[test]
+    fn get_score() {
+        let mut power4 = ConnectFour::new();
+        let p1 = NonZeroU8::new(1).unwrap();
+        let p2 = NonZeroU8::new(2).unwrap();
+
+        power4.play_usize(p2, 4).unwrap();
+        power4.play_usize(p1, 4).unwrap();
+        power4.print();
+        power4.play_usize(p1, 5).unwrap();
+
+        power4.print();
+
+        assert_eq!(power4.get_score(p1), 10);
+        assert_eq!(power4.get_score(p2), -10);
+    }
+
+    #[test]
+    fn get_score_2() {
+        let mut power4 = ConnectFour::new();
+        let p1 = NonZeroU8::new(1).unwrap();
+        let p2 = NonZeroU8::new(2).unwrap();
+
+        power4.play_usize(p1, 2).unwrap();
+        power4.play_usize(p1, 3).unwrap();
+        power4.play_usize(p1, 4).unwrap();
+
+        assert_eq!(power4.get_score(p1), 100);
+
+        power4.print();
+        power4.play_usize(p2, 5).unwrap();
+        power4.print();
+        assert_eq!(power4.get_score(p1), 100); // there is still enough space to win
     }
 }

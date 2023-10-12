@@ -40,7 +40,7 @@ fn main() {
         bot.expect_game().print();
         #[cfg(debug_assertions)]
         {
-            let p2_score = other_bot.expect_game().get_score(p2);
+            let p2_score = bot.expect_game().get_score(p2);
             assert_eq!(p1_score, -p2_score);
         }
         println!("Scores: {p1_score} for player 1");

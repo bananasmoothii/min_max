@@ -359,6 +359,13 @@ impl Game for ConnectFour {
      * Scores are invalid if the line cannot be completed
      */
     fn get_score(&self, player: Self::Player) -> Self::Score {
+        if let Some(winner) = self.winner {
+            return if winner == player {
+                Self::Score::MAX
+            } else {
+                Self::Score::MIN
+            }
+        }
         let p1_score = self.calculate_score(self.p1_aligns2, self.p1_aligns3)
             - self.calculate_score(self.p2_aligns2, self.p2_aligns3);
         if player.get() == 1u8 {

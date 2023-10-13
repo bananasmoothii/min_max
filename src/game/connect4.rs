@@ -461,11 +461,12 @@ impl Game for ConnectFour {
         } else {
             [4, 3, 5, 2, 6, 1, 7]
         };
+        let mut vec: Vec<NonZeroUsize> = Vec::with_capacity(7);
         order
             .iter()
             .filter(|&column| self.get((0, column - 1)).is_none())
-            .map(|&column| NonZeroUsize::new(column).unwrap())
-            .collect::<Vec<NonZeroUsize>>()
+            .for_each(|&column| vec.push(NonZeroUsize::new(column).unwrap()));
+        vec
     }
 
     fn print(&self) {

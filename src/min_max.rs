@@ -155,29 +155,25 @@ impl<G: Game> GameNode<G> {
         //println!("{}({})Exploring {} children of depth {} (actual: {})...", spaces, self.id(), self.children.len(), self.depth(), self.depth().overflowing_sub(real_plays).0);
 
         //println!("({} - {real_plays} = {} )", self.depth(), self.depth().overflowing_sub(real_plays).0);
-        let weight = if self.is_parallelize_depth(real_plays) {
+        if self.is_parallelize_depth(real_plays) {
             // parallelize
             self.children.par_iter_mut().try_for_each(|(_, child)| {
                 //print!("F");
                 maybe_explore_children(child)
             });
-            let weight = (*worst_child_score.lock()).into();
-            self.set_weight(weight);
-            weight.unwrap()
         } else {
             self.children
                 .iter_mut()
                 .try_for_each(|(_, child)| maybe_explore_children(child));
-            let weight = (*worst_child_score.lock()).into();
-            self.set_weight(weight);
-            weight.unwrap()
         };
+        let weight = (*worst_child_score.lock()).into();
+        self.set_weight(weight);
 
         if auto_destroy.load(Relaxed) {
             self.children = Vec::with_capacity(0);
         }
 
-        weight
+        weight.unwrap()
     }
 
     fn is_parallelize_depth(&self, real_plays: u32) -> bool {

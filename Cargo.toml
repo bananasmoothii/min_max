@@ -12,6 +12,10 @@ rayon = "1.8"
 rand = "0.8"
 console = "0.15"
 thousands = "0.2"
+parking_lot = "0.12"
 
 [profile.release]
 debug = true
+lto = 'thin'
+panic = 'abort'
+codegen-units = 1

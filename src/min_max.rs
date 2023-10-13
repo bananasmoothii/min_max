@@ -1,7 +1,8 @@
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::atomic::{AtomicBool, AtomicI32};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
+use parking_lot::Mutex;
 use rayon::iter::*;
 
 use crate::game::player::Player;
@@ -58,7 +59,9 @@ impl<G: Game> GameNode<G> {
         }
     }
 
-    const FORK_DEPTH: u32 = 4;
+    const FIRST_FORK: i32 = 3;
+
+    const FORK_INTERVAL: i32 = 4;
 
     const USE_GAME_SCORE: bool = true;
 
@@ -85,7 +88,7 @@ impl<G: Game> GameNode<G> {
         worst_sibling_score: Arc<Mutex<G::Score>>,
         #[cfg(debug_assertions)] call_count: Arc<AtomicI32>,
     ) -> G::Score {
-        assert!(self.depth() >= real_plays, "Negative exploration");
+        debug_assert!(self.depth() >= real_plays, "Negative exploration");
 
         #[cfg(debug_assertions)]
         call_count.fetch_add(1, Relaxed);
@@ -125,7 +128,7 @@ impl<G: Game> GameNode<G> {
                 #[cfg(debug_assertions)]
                 call_count.clone(),
             );
-            let mut worst_child_score = worst_child_score.lock().unwrap();
+            let mut worst_child_score = worst_child_score.lock();
             // println!("maximize: {maximize},  child: {child_score} worst child: {worst_child_score}");
 
             if (maximize && child_score > *worst_child_score)
@@ -134,7 +137,7 @@ impl<G: Game> GameNode<G> {
                 *worst_child_score = child_score;
             }
             let parent_maximize = !maximize;
-            let worst_sibling_score = worst_sibling_score.lock().unwrap();
+            let worst_sibling_score = worst_sibling_score.lock();
 
             // if the parent will not choose us
             if (parent_maximize && *worst_child_score < *worst_sibling_score)
@@ -158,14 +161,14 @@ impl<G: Game> GameNode<G> {
                 //print!("F");
                 maybe_explore_children(child)
             });
-            let weight = (*worst_child_score.lock().unwrap()).into();
+            let weight = (*worst_child_score.lock()).into();
             self.set_weight(weight);
             weight.unwrap()
         } else {
             self.children
                 .iter_mut()
                 .try_for_each(|(_, child)| maybe_explore_children(child));
-            let weight = (*worst_child_score.lock().unwrap()).into();
+            let weight = (*worst_child_score.lock()).into();
             self.set_weight(weight);
             weight.unwrap()
         };
@@ -178,8 +181,8 @@ impl<G: Game> GameNode<G> {
     }
 
     fn is_parallelize_depth(&self, real_plays: u32) -> bool {
-        // no need to check whether it overflows as there won't be u32::MAX plays
-        self.depth().overflowing_sub(real_plays).0 == Self::FORK_DEPTH && Self::MULTI_THREADING
+        let depth = self.depth() as i32 - real_plays as i32;
+        (depth - Self::FIRST_FORK) % Self::FORK_INTERVAL == 0 && Self::MULTI_THREADING
     }
 
     /// Returns true if childrens should be checked for win or draw, false if they were already checked

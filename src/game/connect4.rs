@@ -151,9 +151,7 @@ impl ConnectFour {
         self.play(player, NonZeroUsize::new(column).unwrap())
     }
 
-    pub fn get_winner_coords(
-        &self,
-    ) -> Option<[<Self as Game>::Coordinate; 4]> {
+    pub fn get_winner_coords(&self) -> Option<[<Self as Game>::Coordinate; 4]> {
         if self.last_played_coords.is_none() {
             return None;
         }
@@ -304,11 +302,8 @@ impl ConnectFour {
                 self.winner = Some(counting_player);
                 return;
             }
-            let count_opposite = self.count_in_direction(
-                last_coords,
-                count_direction.opposite(),
-                3 - count,
-            );
+            let count_opposite =
+                self.count_in_direction(last_coords, count_direction.opposite(), 3 - count);
             if count + count_opposite == 3 {
                 self.winner = Some(counting_player);
                 return;
@@ -337,7 +332,7 @@ impl ConnectFour {
         }
     }
 
-    const RANDOMIZE_POSSIBLE_PLAYS: bool = false;
+    const RANDOMIZE_POSSIBLE_PLAYS: bool = true;
 }
 
 impl Game for ConnectFour {
@@ -460,8 +455,8 @@ impl Game for ConnectFour {
         let order: [usize; 7] = if Self::RANDOMIZE_POSSIBLE_PLAYS {
             match rand::thread_rng().gen_range(0..=2) {
                 0 => [4, 3, 5, 2, 6, 1, 7],
-                1 => [3, 5, 4, 2, 6, 1, 7],
-                _ => [2, 6, 4, 3, 5, 1, 7],
+                1 => [3, 5, 4, 6, 2, 1, 7],
+                _ => [6, 2, 4, 5, 3, 1, 7],
             }
         } else {
             [4, 3, 5, 2, 6, 1, 7]

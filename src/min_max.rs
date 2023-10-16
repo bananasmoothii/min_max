@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use parking_lot::Mutex;
 use rayon::iter::*;
+use smallvec::SmallVec;
 
 use crate::game::player::Player;
 use crate::game::state::GameState::*;
@@ -170,7 +171,7 @@ impl<G: Game> GameNode<G> {
         self.set_weight(weight);
 
         if auto_destroy.load(Relaxed) {
-            self.children = Vec::with_capacity(0);
+            self.children = Box::new(SmallVec::with_capacity(0));
         }
 
         weight.unwrap()
@@ -195,7 +196,7 @@ impl<G: Game> GameNode<G> {
 
             let possible_plays = game.possible_plays();
             let possibilities = possible_plays.len();
-            let mut vec = Vec::with_capacity(possibilities);
+            let mut vec = SmallVec::with_capacity(possibilities);
 
             if possibilities >= 2 || !take_game {
                 for i in 0..(possibilities - 1) {
@@ -234,7 +235,7 @@ impl<G: Game> GameNode<G> {
                 ));
             }
 
-            self.children = vec;
+            self.children = Box::new(vec);
             true
         } else {
             self.regenerate_children_games();

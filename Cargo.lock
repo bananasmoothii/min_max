@@ -134,6 +134,7 @@ dependencies = [
  "parking_lot",
  "rand",
  "rayon",
+ "smallvec",
  "strum",
  "strum_macros",
  "thousands",

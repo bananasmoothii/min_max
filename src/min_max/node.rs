@@ -1,5 +1,7 @@
 use std::fmt::{Debug, Formatter};
 
+use smallvec::SmallVec;
+
 use crate::game::state::GameState;
 use crate::game::state::GameState::PlayersTurn;
 use crate::game::Game;
@@ -8,7 +10,7 @@ use crate::game::Game;
 pub struct GameNode<G: Game> {
     depth: u32,
     weight: Option<G::Score>,
-    pub(super) children: Vec<(G::InputCoordinate, Self)>,
+    pub(super) children: Box<SmallVec<[(G::InputCoordinate, GameNode<G>); 7]>>,
     pub(super) game: Option<G>,
     pub game_state: GameState<G>,
 }
@@ -23,7 +25,7 @@ impl<G: Game> GameNode<G> {
         Self {
             depth,
             weight,
-            children: Vec::new(),
+            children: Box::new(SmallVec::new()),
             game,
             game_state,
         }
@@ -44,7 +46,7 @@ impl<G: Game> GameNode<G> {
 
     pub fn regenerate_children_games(&mut self) {
         let game = self.game.as_ref().unwrap();
-        for (_, child) in &mut self.children {
+        for (_, child) in &mut self.children.iter_mut() {
             child.fill_play(game.clone());
         }
     }
@@ -53,7 +55,7 @@ impl<G: Game> GameNode<G> {
      * Returns (false, self) if the child does not exist, else (true, child)
      */
     pub fn try_into_child(mut self, play: G::InputCoordinate) -> (bool, Self) {
-        let mut new_children = Vec::with_capacity(self.children.len());
+        let mut new_children = SmallVec::with_capacity(self.children.len());
         for (coord, mut child) in self.children.into_iter() {
             if coord == play {
                 child.fill_play(self.game.unwrap());
@@ -61,7 +63,7 @@ impl<G: Game> GameNode<G> {
             }
             new_children.push((coord, child));
         }
-        self.children = new_children;
+        self.children = Box::new(new_children);
         (false, self)
     }
 
@@ -73,7 +75,7 @@ impl<G: Game> GameNode<G> {
     pub fn weight(&self) -> Option<G::Score> {
         self.weight
     }
-    pub fn children(&self) -> &Vec<(G::InputCoordinate, Self)> {
+    pub fn children(&self) -> &SmallVec<[(G::InputCoordinate, Self); 7]> {
         &self.children
     }
 
@@ -114,7 +116,7 @@ impl<G: Game> GameNode<G> {
             return s;
         }
         let spaces = "|  ".repeat((self.depth + 1) as usize);
-        for (input, child) in &self.children {
+        for (input, child) in self.children.iter() {
             s += &format!(
                 "\n{spaces}({}) {input} scores {}",
                 self.game_state,
@@ -126,7 +128,7 @@ impl<G: Game> GameNode<G> {
 
     fn count_depth(&self) -> u32 {
         let mut max_depth = 0;
-        for (_, child) in &self.children {
+        for (_, child) in self.children.iter() {
             let child_depth = child.count_depth() + 1;
             if child_depth > max_depth {
                 max_depth = child_depth;
@@ -145,7 +147,7 @@ impl<G: Game> Debug for GameNode<G> {
         };
         let mut s = format!("{weight_str}: ");
         let spaces = "|  ".repeat((self.depth + 1) as usize);
-        for (input, child) in &self.children {
+        for (input, child) in self.children.iter() {
             s += &format!("\n{spaces}({}) {input} scores {child:?}", self.game_state);
         }
         f.write_str(&s)

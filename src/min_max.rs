@@ -113,7 +113,7 @@ impl<G: Game> GameNode<G> {
 
         // WARNING: (maybe) destroying game here, for memory efficiency
 
-        let check_children = self.fill_children_and_destroy_game(now_playing, real_plays);
+        let check_children = self.fill_children_and_destroy_game(now_playing);
 
         let auto_destroy = AtomicBool::new(false);
 
@@ -182,38 +182,30 @@ impl<G: Game> GameNode<G> {
     }
 
     /// Returns true if childrens should be checked for win or draw, false if they were already checked
-    fn fill_children_and_destroy_game(
-        &mut self,
-        now_playing: <G as Game>::Player,
-        real_plays: u32,
-    ) -> bool {
-        let game = self.game.as_ref().expect("game was removed too early");
-
+    fn fill_children_and_destroy_game(&mut self, now_playing: <G as Game>::Player) -> bool {
         if self.children.is_empty() {
+            let game = &self.game;
             // if we take the game from us, we don't have to clone it, but we can do this only once
-            let take_game = self.depth() != real_plays;
 
             let possible_plays = game.possible_plays();
             let possibilities = possible_plays.len();
             let mut vec = Vec::with_capacity(possibilities);
 
-            if possibilities >= 2 || !take_game {
-                for i in 0..(possibilities - 1) {
-                    let input_coord = possible_plays[i];
-                    let mut game = game.clone();
-                    game.play(now_playing, input_coord).unwrap(); // should not panic as input_coord is a possible play
-                    vec.push((
-                        input_coord,
-                        GameNode::new(
-                            Some(game),
-                            self.depth() + 1,
-                            None,
-                            PlayersTurn(now_playing.other(), Some(input_coord)),
-                        ),
-                    ));
-                }
+            for i in 0..(possibilities) {
+                let input_coord = possible_plays[i];
+                let mut game = game.clone();
+                game.play(now_playing, input_coord).unwrap(); // should not panic as input_coord is a possible play
+                vec.push((
+                    input_coord,
+                    GameNode::new(
+                        game,
+                        self.depth() + 1,
+                        None,
+                        PlayersTurn(now_playing.other(), Some(input_coord)),
+                    ),
+                ));
             }
-            if possibilities >= 1 {
+            /*if possibilities >= 1 {
                 let input_coord = possible_plays[possibilities - 1];
                 let mut game = if take_game {
                     // we don't want to destroy the game in the root node
@@ -232,12 +224,11 @@ impl<G: Game> GameNode<G> {
                         PlayersTurn(now_playing.other(), Some(input_coord)),
                     ),
                 ));
-            }
-
+            }*/
             self.children = vec;
             true
         } else {
-            self.regenerate_children_games();
+            //self.regenerate_children_games();
             false
         }
     }
@@ -251,7 +242,7 @@ impl<G: Game> GameNode<G> {
             self.set_weight(Some(half_loose));
             return true;
         }
-        if self.game.as_ref().unwrap().is_full() {
+        if self.game.is_full() {
             self.set_weight(Some(half_loose));
             self.game_state = self.game_state.to_draw();
             return true;
@@ -264,7 +255,7 @@ impl<G: Game> GameNode<G> {
             self.set_weight(Self::win_weight(winner, bot_player));
             return true;
         }
-        let winner = self.game.as_ref().unwrap().get_winner();
+        let winner = self.game.get_winner();
         if let Some(winner) = winner {
             self.set_weight(Self::win_weight(winner, bot_player));
             self.game_state = self.game_state.to_win();
@@ -291,8 +282,8 @@ impl<G: Game> GameNode<G> {
         max_depth: u32,
         real_plays: u32,
     ) -> bool {
-        let game = self.game.as_ref().expect("game was removed too early");
         if self.depth() >= max_depth + real_plays {
+            let game = &self.game;
             let weight = Some(
                 if Self::USE_GAME_SCORE {
                     // I know this is a constant, but this allows me to change it easily
@@ -332,8 +323,7 @@ impl<G: Game> GameNode<G> {
                 break;
             }
         }
-        let mut best_child = best_child.expect("No children found");
-        best_child.fill_play(self.game.unwrap());
+        let best_child = best_child.expect("No children found");
         best_child
         /*
                 let mut best = G::Score::MIN();

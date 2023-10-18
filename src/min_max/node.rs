@@ -9,17 +9,12 @@ pub struct GameNode<G: Game> {
     depth: u32,
     weight: Option<G::Score>,
     pub(super) children: Vec<(G::InputCoordinate, Self)>,
-    pub(super) game: Option<G>,
+    pub(super) game: G,
     pub game_state: GameState<G>,
 }
 
 impl<G: Game> GameNode<G> {
-    pub fn new(
-        game: Option<G>,
-        depth: u32,
-        weight: Option<G::Score>,
-        game_state: GameState<G>,
-    ) -> Self {
+    pub fn new(game: G, depth: u32, weight: Option<G::Score>, game_state: GameState<G>) -> Self {
         Self {
             depth,
             weight,
@@ -30,23 +25,7 @@ impl<G: Game> GameNode<G> {
     }
 
     pub fn new_root(game: G, starting_player: G::Player, depth: u32) -> Self {
-        GameNode::new(Some(game), depth, None, PlayersTurn(starting_player, None))
-    }
-
-    pub fn fill_play(&mut self, mut previous_game: G) {
-        if self.game.is_some() {
-            return;
-        }
-        let (last_player, last_play) = self.game_state.get_last_play();
-        previous_game.play(last_player, last_play.unwrap()).unwrap();
-        self.game = Some(previous_game);
-    }
-
-    pub fn regenerate_children_games(&mut self) {
-        let game = self.game.as_ref().unwrap();
-        for (_, child) in &mut self.children {
-            child.fill_play(game.clone());
-        }
+        GameNode::new(game, depth, None, PlayersTurn(starting_player, None))
     }
 
     /**
@@ -56,7 +35,6 @@ impl<G: Game> GameNode<G> {
         let mut new_children = Vec::with_capacity(self.children.len());
         for (coord, mut child) in self.children.into_iter() {
             if coord == play {
-                child.fill_play(self.game.unwrap());
                 return (true, child);
             }
             new_children.push((coord, child));
@@ -77,20 +55,16 @@ impl<G: Game> GameNode<G> {
         &self.children
     }
 
-    pub fn game(&self) -> Option<&G> {
-        self.game.as_ref()
-    }
-
-    pub fn expect_game(&self) -> &G {
-        self.game.as_ref().expect("GameNode has no game")
+    pub fn game(&self) -> &G {
+        &self.game
     }
 
     pub fn expect_game_mut(&mut self) -> &mut G {
-        self.game.as_mut().expect("GameNode has no game")
+        &mut self.game
     }
 
-    pub fn into_expect_game(self) -> G {
-        self.game.expect("GameNode has no game")
+    pub fn into_game(self) -> G {
+        self.game
     }
 
     // Setters
@@ -114,7 +88,7 @@ impl<G: Game> GameNode<G> {
             return s;
         }
         let spaces = "|  ".repeat((self.depth + 1) as usize);
-        for (input, child) in &self.children {
+        for (input, child) in self.children.iter() {
             s += &format!(
                 "\n{spaces}({}) {input} scores {}",
                 self.game_state,
@@ -126,7 +100,7 @@ impl<G: Game> GameNode<G> {
 
     fn count_depth(&self) -> u32 {
         let mut max_depth = 0;
-        for (_, child) in &self.children {
+        for (_, child) in self.children.iter() {
             let child_depth = child.count_depth() + 1;
             if child_depth > max_depth {
                 max_depth = child_depth;
@@ -145,7 +119,7 @@ impl<G: Game> Debug for GameNode<G> {
         };
         let mut s = format!("{weight_str}: ");
         let spaces = "|  ".repeat((self.depth + 1) as usize);
-        for (input, child) in &self.children {
+        for (input, child) in self.children.iter() {
             s += &format!("\n{spaces}({}) {input} scores {child:?}", self.game_state);
         }
         f.write_str(&s)

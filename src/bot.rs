@@ -35,10 +35,7 @@ impl<G: Game> Bot<G> {
             .try_into_child(play);
         if is_known_move {
             self.game_tree = Some(new_game_tree);
-            debug_assert!(self
-                .game_tree
-                .as_ref()
-                .is_some_and(|tree| tree.game().is_some()));
+            debug_assert!(self.game_tree.as_ref().is_some());
         } else {
             // Here, new_game_tree is actually game_tree, the ownership was given back to us
             let result = new_game_tree
@@ -52,7 +49,7 @@ impl<G: Game> Bot<G> {
                 println!("Unexpected move... Maybe you are a pure genius, or a pure idiot.");
             }
             let depth = new_game_tree.depth() + 1;
-            let game = new_game_tree.into_expect_game();
+            let game = new_game_tree.into_game();
             self.game_tree = Some(GameNode::new_root(game, self.player, depth));
         }
         self.play_count += 1;
@@ -86,7 +83,6 @@ impl<G: Game> Bot<G> {
             println!("Ok I'm basically dead...");
         }
 
-        debug_assert!(game_tree.game().is_some());
         game_tree.game_state.get_last_play().1.unwrap()
     }
 
@@ -95,6 +91,6 @@ impl<G: Game> Bot<G> {
     }
 
     pub fn expect_game(&self) -> &G {
-        self.game_tree.as_ref().unwrap().expect_game()
+        self.game_tree.as_ref().unwrap().game()
     }
 }
